@@ -1,1 +1,15 @@
 name: stu-fullstack
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.backend
+    container_name: stu-backend
+    working_dir: /app/stu-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - stu-backend-data:/app/data
+    environment:
+      - TEST=test
