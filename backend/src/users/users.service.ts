@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { User } from '../models/user.model.js';
 import usersSeed from '../models/user.seed.json' with { type: 'json' };
+import { PrismaService } from 'prisma/prisma.service.js';
 
 export type Paginated<T> = {
   data: T[];
@@ -16,32 +17,46 @@ export type Paginated<T> = {
 
 @Injectable()
 export class UserService {
+  constructor(private readonly prisma: PrismaService) {}
+
   private readonly byId = new Map<string, User>(
     (usersSeed as User[]).map((u) => [u.id, u] as const),
   );
   private readonly users: User[] = usersSeed as User[];
 
-  getUser(id: string): User {
-    const user = this.byId.get(id);
+  async getUser(id: string): Promise<User> {
+    const user = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null }, // exclude soft-deleted
+    });
+
     if (!user) throw new NotFoundException(`User ${id} not found`);
     return user;
   }
 
-  listUsers(page: number, limit: number): Paginated<User> {
-    const active = this.users.filter((u) => u.deletedAt == null);
+  async listUsers(page: number, limit: number): Promise<Paginated<User>> {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(100, Math.max(1, limit));
+    const skip = (safePage - 1) * safeLimit;
 
-    const total = active.length;
-    const totalPages = Math.max(1, Math.ceil(total / limit));
-    const safePage = Math.min(page, totalPages);
+    const where = { deletedAt: null as null };
 
-    const start = (safePage - 1) * limit;
-    const data = active.slice(start, start + limit);
+    const [total, data] = await this.prisma.$transaction([
+      this.prisma.user.count({ where }),
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take: safeLimit,
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    const totalPages = Math.max(1, Math.ceil(total / safeLimit));
 
     return {
       data,
       meta: {
-        page: safePage,
-        limit,
+        page: Math.min(safePage, totalPages),
+        limit: safeLimit,
         total,
         totalPages,
         hasNext: safePage < totalPages,
