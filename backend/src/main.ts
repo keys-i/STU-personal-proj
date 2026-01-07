@@ -1,12 +1,10 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from './app.module.js';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
-
-declare const module: any;
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -33,9 +31,11 @@ async function bootstrap() {
   console.log(`Application is running on: ${await app.getUrl()}`);
 
   // Hot reload
-  if (module.hot) {
-    module.hot.accept();
-    module.hot.dispose(() => void app.close());
+  const hot = (import.meta as any).webpackHot;
+
+  if (hot) {
+    hot.accept();
+    hot.dispose(() => void app.close());
   }
 }
 
