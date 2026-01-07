@@ -1,7 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ApiResponse } from '@nestjs/swagger';
-import { Query } from '@nestjs/graphql';
 
 @Controller()
 export class AppController {
