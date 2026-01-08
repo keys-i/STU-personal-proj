@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import type { User, Prisma } from '../../generated/prisma/client.js';
 import { UserFilterDto } from './dto/user-filter.dto.js';
+import { CreateUserDto } from './dto/create-user.dto.js';
 
 export type Paginated<T> = {
   data: T[];
@@ -126,5 +128,29 @@ export class UserService {
     }
 
     return d;
+  }
+
+  async createUser(dto: CreateUserDto): Promise<User> {
+    try {
+      return await this.prisma.user.create({
+        data: {
+          name: dto.name,
+          email: dto.email,
+          status: dto.status,
+          role: dto.role ?? null,
+        },
+      });
+    } catch (e: unknown) {
+      if (this.isPrismaUniqueViolation(e)) {
+        throw new ConflictException('Email already exists');
+      }
+      throw e;
+    }
+  }
+
+  private isPrismaUniqueViolation(e: unknown): boolean {
+    if (!e || typeof e !== 'object') return false;
+    const code = (e as { code?: unknown }).code;
+    return code === 'P2002';
   }
 }

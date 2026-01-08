@@ -1,6 +1,8 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
+  ApiCreatedResponse,
+  ApiConflictResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -8,9 +10,9 @@ import {
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
-
 import { UserService } from './users.service.js';
-import { ListUsersQueryDto } from './dto/list-users.dto.js';
+import type { CreateUserDto } from './dto/create-user.dto.js';
+import type { ListUsersQueryDto } from './dto/list-users.dto.js';
 import type { IdParamDto } from './dto/id-param.dto.js';
 
 @ApiTags('users')
@@ -90,5 +92,16 @@ export class UsersController {
   @ApiBadRequestResponse({ description: 'Validation error (id must be UUID).' })
   async getUser(@Param() p: IdParamDto) {
     return await this.users.getUser(p.id);
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Create user' })
+  @ApiCreatedResponse({ description: 'User created' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed (name/email/status/role)',
+  })
+  @ApiConflictResponse({ description: 'Email already exists' })
+  async createUser(@Body() dto: CreateUserDto) {
+    return await this.users.createUser(dto);
   }
 }
