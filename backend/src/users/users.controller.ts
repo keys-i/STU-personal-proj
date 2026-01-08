@@ -3,11 +3,15 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   Patch,
   Post,
   Query,
+  Res,
 } from '@nestjs/common';
+import type { FastifyReply } from 'fastify';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -18,7 +22,6 @@ import {
   ApiOperation,
   ApiParam,
   ApiQuery,
-  ApiTags,
 } from '@nestjs/swagger';
 import { UserService } from './users.service.js';
 import type {
@@ -28,7 +31,6 @@ import type {
   UpdateUserDto,
 } from './dto/dto.js';
 
-@ApiTags('users')
 @Controller('users')
 export class UsersController {
   constructor(private readonly users: UserService) {}
@@ -108,14 +110,22 @@ export class UsersController {
   }
 
   @Post()
-  @ApiOperation({ summary: 'Create user' })
-  @ApiCreatedResponse({ description: 'User created' })
-  @ApiBadRequestResponse({
-    description: 'Validation failed (name/email/status/role)',
+  @ApiOperation({ summary: 'Create user (idempotent by email)' })
+  @ApiCreatedResponse({ description: 'User created (first time)' })
+  @ApiOkResponse({
+    description: 'User already exists (returned existing user)',
   })
-  @ApiConflictResponse({ description: 'Email already exists' })
-  async createUser(@Body() dto: CreateUserDto) {
-    return await this.users.createUser(dto);
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiConflictResponse({ description: 'Email exists but user is soft-deleted' })
+  async createUser(
+    @Body() body: CreateUserDto,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ) {
+    const { user, created } = await this.users.createUser(body);
+
+    // 201 if created, 200 if returned existing
+    reply.code(created ? HttpStatus.CREATED : HttpStatus.OK);
+    return user;
   }
 
   @Patch(':id')
@@ -138,18 +148,13 @@ export class UsersController {
   }
 
   @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete user' })
-  @ApiParam({
-    name: 'id',
-    format: 'uuid',
-    example: '550e8400-e29b-41d4-a716-446655440000',
-  })
-  @ApiNoContentResponse({ description: 'User soft-deleted' })
-  @ApiNotFoundResponse({
-    description: 'User not found (missing or already soft-deleted)',
-  })
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiNoContentResponse({ description: 'User deleted or already soft-deleted' })
+  @ApiNotFoundResponse({ description: 'User not found' })
   @ApiBadRequestResponse({ description: 'Validation error (id must be UUID)' })
   async deleteUser(@Param() p: IdParamDto): Promise<void> {
-    return await this.users.softDeleteUser(p.id);
+    await this.users.softDeleteUser(p.id);
   }
 }

@@ -129,9 +129,11 @@ export class UserService {
     return d;
   }
 
-  async createUser(dto: CreateUserDto): Promise<User> {
+  async createUser(
+    dto: CreateUserDto,
+  ): Promise<{ user: User; created: boolean }> {
     try {
-      return await this.prisma.user.create({
+      const user = await this.prisma.user.create({
         data: {
           name: dto.name,
           email: dto.email,
@@ -139,10 +141,28 @@ export class UserService {
           role: dto.role ?? null,
         },
       });
+      return { user, created: true };
     } catch (e: unknown) {
-      if (this.isPrismaUniqueViolation(e)) {
-        throw new ConflictException('Email already exists');
+      // unique email constraint violation
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        const existing = await this.prisma.user.findUnique({
+          where: { email: dto.email },
+        });
+
+        if (!existing) throw e;
+
+        if (existing.deletedAt != null) {
+          throw new ConflictException(
+            'Email already exists (soft-deleted user)',
+          );
+        }
+
+        return { user: existing, created: false };
       }
+
       throw e;
     }
   }
@@ -185,24 +205,18 @@ export class UserService {
   }
 
   async softDeleteUser(id: string): Promise<void> {
-    const existing = await this.prisma.user.findFirst({
+    const result = await this.prisma.user.updateMany({
       where: { id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+
+    if (result.count > 0) return;
+
+    const exists = await this.prisma.user.findUnique({
+      where: { id },
       select: { id: true },
     });
 
-    if (!existing) throw new NotFoundException(`User ${id} not found`);
-
-    try {
-      await this.prisma.user.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-    } catch (e: unknown) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError) {
-        if (e.code === 'P2025')
-          throw new NotFoundException(`User ${id} not found`);
-      }
-      throw e;
-    }
+    if (!exists) throw new NotFoundException(`User ${id} not found`);
   }
 }
