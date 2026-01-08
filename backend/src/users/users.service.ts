@@ -35,10 +35,14 @@ export class UserService {
   async listUsers(
     page: number,
     limit: number,
-    filter: UserFilterDto,
+    filter?: UserFilterDto,
   ): Promise<Paginated<User>> {
-    const safePage = Math.max(1, page);
-    const safeLimit = Math.min(100, Math.max(1, limit));
+    const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+
+    const safeLimit = Number.isFinite(limit)
+      ? Math.min(100, Math.max(1, Math.floor(limit)))
+      : 10;
+
     const skip = (safePage - 1) * safeLimit;
 
     const where = this.buildWhere(filter);

@@ -52,7 +52,3 @@ DATABASE_URL=postgresql://stu:stu_password@db:5432/
 > - Keep validation at the edges (DTOs in controllers).
 > - Keep DB logic in services (Prisma queries).
 > - Prefer migrations over manual DB changes.
-
-```
-
-```

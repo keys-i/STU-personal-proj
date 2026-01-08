@@ -6,44 +6,12 @@ import { defineConfig, env } from 'prisma/config';
 
 dotenvExpand.expand(dotenv.config());
 
-function optionalEnv(name: string): string | undefined {
-  try {
-    return env(name);
-  } catch {
-    return undefined;
-  }
-}
-
-function requireEnv(name: string): string {
-  // env() already throws a helpful error if missing
-  return env(name);
-}
-
-function buildDatabaseUrlFromParts(): string {
-  const db = requireEnv('POSTGRES_DB');
-  const user = encodeURIComponent(requireEnv('POSTGRES_USER'));
-  const pass = encodeURIComponent(requireEnv('POSTGRES_PASSWORD'));
-
-  const host = requireEnv('POSTGRES_HOST');
-  const port = requireEnv('POSTGRES_PORT');
-
-  if (!/^\d+$/.test(port)) {
-    throw new Error(
-      `Invalid POSTGRES_PORT="${port}". Expected digits only (e.g. 5432).`,
-    );
-  }
-
-  return `postgresql://${user}:${pass}@${host}:${port}/${db}?schema=public`;
-}
-
-const databaseUrl = optionalEnv('DATABASE_URL') ?? buildDatabaseUrlFromParts();
-
 export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
   },
   datasource: {
-    url: databaseUrl,
+    url: env('DATABASE_URL'),
   },
 });
