@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { User } from '../models/user.model.js';
-import usersSeed from '../models/user.seed.json' with { type: 'json' };
-import { PrismaService } from 'prisma/prisma.service.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import type { User, Prisma } from '../../generated/prisma/client.js';
+import { UserFilterDto } from './dto/user-filter.dto.js';
 
 export type Paginated<T> = {
   data: T[];
@@ -19,14 +19,9 @@ export type Paginated<T> = {
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
 
-  private readonly byId = new Map<string, User>(
-    (usersSeed as User[]).map((u) => [u.id, u] as const),
-  );
-  private readonly users: User[] = usersSeed as User[];
-
   async getUser(id: string): Promise<User> {
     const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null }, // exclude soft-deleted
+      where: { id, deletedAt: null },
     });
 
     if (!user) throw new NotFoundException(`User ${id} not found`);
@@ -38,7 +33,7 @@ export class UserService {
     const safeLimit = Math.min(100, Math.max(1, limit));
     const skip = (safePage - 1) * safeLimit;
 
-    const where = { deletedAt: null as null };
+    const where = this.buildWhere(filter);
 
     const [total, data] = await this.prisma.$transaction([
       this.prisma.user.count({ where }),
@@ -51,17 +46,42 @@ export class UserService {
     ]);
 
     const totalPages = Math.max(1, Math.ceil(total / safeLimit));
+    const pageClamped = Math.min(safePage, totalPages);
 
     return {
       data,
       meta: {
-        page: Math.min(safePage, totalPages),
+        page: pageClamped,
         limit: safeLimit,
         total,
         totalPages,
-        hasNext: safePage < totalPages,
-        hasPrev: safePage > 1,
+        hasNext: pageClamped < totalPages,
+        hasPrev: pageClamped > 1,
       },
     };
+  }
+
+  private buildWhere(filter?: UserFilterDto): Prisma.UserWhereInput {
+    // soft-delete exclude
+    const where: Prisma.UserWhereInput = {
+      deletedAt: null,
+    };
+
+    if (!filter) return where;
+
+    if (filter.name) {
+      where.name = {
+        contains: filter.name,
+        mode: 'insensitive',
+      };
+    }
+
+    if (filter.status) {
+      where.status = filter.status;
+    }
+
+    // TODO: add Data filtering
+
+    return where;
   }
 }

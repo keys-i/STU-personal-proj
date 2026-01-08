@@ -2,7 +2,10 @@ import { defineConfig } from 'eslint/config';
 import eslint from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
+import { fileURLToPath } from 'node:url';
 import prettierRecommended from 'eslint-plugin-prettier/recommended';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig([
   // Ignore build artifacts
@@ -16,12 +19,12 @@ export default defineConfig([
   // Type-aware TS lint ONLY for .ts source files (not this config)
   ...tseslint.configs.recommendedTypeChecked.map((cfg) => ({
     ...cfg,
-    files: ['src/**/*.ts', 'test/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'prisma/**/*.ts'],
   })),
 
   // TS project settings only for TS source files
   {
-    files: ['src/**/*.ts', 'test/**/*.ts'],
+    files: ['src/**/*.ts', 'test/**/*.ts', 'prisma/**/*.ts'],
     languageOptions: {
       globals: {
         ...globals.node,
@@ -30,7 +33,7 @@ export default defineConfig([
       sourceType: 'module',
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: __dirname,
       },
     },
     rules: {

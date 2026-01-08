@@ -6,7 +6,7 @@ services:
     container_name: stu-db
     restart: unless-stopped
     env_file:
-      - .env
+      - backend/.env
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -32,11 +32,11 @@ services:
     volumes:
       - stu-backend-data:/app/data
     env_file:
-      - .env
+      - backend/.env
     environment:
       - DATABASE_URL=${DATABASE_URL}
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
 
 volumes:
