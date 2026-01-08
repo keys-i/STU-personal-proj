@@ -28,7 +28,11 @@ export class UserService {
     return user;
   }
 
-  async listUsers(page: number, limit: number): Promise<Paginated<User>> {
+  async listUsers(
+    page: number,
+    limit: number,
+    filter: UserFilterDto,
+  ): Promise<Paginated<User>> {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
     const skip = (safePage - 1) * safeLimit;
