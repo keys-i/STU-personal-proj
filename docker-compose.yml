@@ -33,8 +33,6 @@ services:
       - stu-backend-data:/app/data
     env_file:
       - backend/.env
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
     depends_on:
       db:
         condition: service_healthy
