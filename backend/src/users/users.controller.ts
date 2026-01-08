@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+} from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -11,9 +19,12 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { UserService } from './users.service.js';
-import type { CreateUserDto } from './dto/create-user.dto.js';
-import type { ListUsersQueryDto } from './dto/list-users.dto.js';
-import type { IdParamDto } from './dto/id-param.dto.js';
+import type {
+  CreateUserDto,
+  ListUsersQueryDto,
+  IdParamDto,
+  UpdateUserDto,
+} from './dto/dto.js';
 
 @ApiTags('users')
 @Controller('users')
@@ -103,5 +114,24 @@ export class UsersController {
   @ApiConflictResponse({ description: 'Email already exists' })
   async createUser(@Body() dto: CreateUserDto) {
     return await this.users.createUser(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update user' })
+  @ApiParam({
+    name: 'id',
+    format: 'uuid',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiOkResponse({ description: 'User updated' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed or no fields provided',
+  })
+  @ApiNotFoundResponse({
+    description: 'User not found (missing or soft-deleted)',
+  })
+  @ApiConflictResponse({ description: 'Email already exists' })
+  async updateUser(@Param() p: IdParamDto, @Body() body: UpdateUserDto) {
+    return await this.users.updateUser(p.id, body);
   }
 }

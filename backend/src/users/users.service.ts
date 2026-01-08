@@ -5,9 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import type { User, Prisma } from '../../generated/prisma/client.js';
-import { UserFilterDto } from './dto/user-filter.dto.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
+import { type User, Prisma } from '../../generated/prisma/client.js';
+import type { UserFilterDto, CreateUserDto, UpdateUserDto } from './dto/dto.js';
 
 export type Paginated<T> = {
   data: T[];
@@ -152,5 +151,36 @@ export class UserService {
     if (!e || typeof e !== 'object') return false;
     const code = (e as { code?: unknown }).code;
     return code === 'P2002';
+  }
+
+  async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
+    const existing = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!existing) throw new NotFoundException(`User ${id} not found`);
+
+    const data: Prisma.UserUpdateInput = {
+      ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.email !== undefined ? { email: dto.email } : {}),
+      ...(dto.status !== undefined ? { status: dto.status } : {}),
+      ...(dto.role !== undefined ? { role: dto.role } : {}),
+    };
+
+    try {
+      return await this.prisma.user.update({
+        where: { id },
+        data,
+      });
+    } catch (e: unknown) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2002')
+          throw new ConflictException('Email already exists');
+        if (e.code === 'P2025')
+          throw new NotFoundException(`User ${id} not found`);
+      }
+      throw e;
+    }
   }
 }
