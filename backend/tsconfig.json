@@ -31,6 +31,12 @@
 
     "types": ["node"],
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "prisma**/*.ts"],
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "prisma**/*.ts",
+    "prisma.config.ts",
+    "eslint.config.ts",
+  ],
   "exclude": ["dist", "node_modules", "coverage"],
 }

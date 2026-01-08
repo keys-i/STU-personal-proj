@@ -19,12 +19,24 @@ export default defineConfig([
   // Type-aware TS lint ONLY for .ts source files (not this config)
   ...tseslint.configs.recommendedTypeChecked.map((cfg) => ({
     ...cfg,
-    files: ['src/**/*.ts', 'test/**/*.ts', 'prisma/**/*.ts'],
+    files: [
+      'src/**/*.ts',
+      'test/**/*.ts',
+      'prisma/**/*.ts',
+      'prisma.config.ts',
+      'eslint.config.ts',
+    ],
   })),
 
   // TS project settings only for TS source files
   {
-    files: ['src/**/*.ts', 'test/**/*.ts', 'prisma/**/*.ts'],
+    files: [
+      'src/**/*.ts',
+      'test/**/*.ts',
+      'prisma/**/*.ts',
+      'prisma.config.ts',
+      'eslint.config.ts',
+    ],
     languageOptions: {
       globals: {
         ...globals.node,
