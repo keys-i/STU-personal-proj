@@ -183,4 +183,26 @@ export class UserService {
       throw e;
     }
   }
+
+  async softDeleteUser(id: string): Promise<void> {
+    const existing = await this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!existing) throw new NotFoundException(`User ${id} not found`);
+
+    try {
+      await this.prisma.user.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+    } catch (e: unknown) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2025')
+          throw new NotFoundException(`User ${id} not found`);
+      }
+      throw e;
+    }
+  }
 }

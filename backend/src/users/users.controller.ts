@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -11,6 +12,7 @@ import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
   ApiConflictResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -133,5 +135,21 @@ export class UsersController {
   @ApiConflictResponse({ description: 'Email already exists' })
   async updateUser(@Param() p: IdParamDto, @Body() body: UpdateUserDto) {
     return await this.users.updateUser(p.id, body);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Soft delete user' })
+  @ApiParam({
+    name: 'id',
+    format: 'uuid',
+    example: '550e8400-e29b-41d4-a716-446655440000',
+  })
+  @ApiNoContentResponse({ description: 'User soft-deleted' })
+  @ApiNotFoundResponse({
+    description: 'User not found (missing or already soft-deleted)',
+  })
+  @ApiBadRequestResponse({ description: 'Validation error (id must be UUID)' })
+  async deleteUser(@Param() p: IdParamDto): Promise<void> {
+    return await this.users.softDeleteUser(p.id);
   }
 }
