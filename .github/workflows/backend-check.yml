@@ -31,8 +31,8 @@ jobs:
       - name: Load env (examples/examples.env)
         shell: bash
         run: |
-          cat examples/examples.env >> "$GITHUB_ENV"
           pwd && ls
+          cat examples/examples.env >> "$GITHUB_ENV"
           npx prisma generate
 
       - name: Lint
