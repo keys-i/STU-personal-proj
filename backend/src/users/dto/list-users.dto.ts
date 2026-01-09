@@ -19,6 +19,7 @@ export class ListUsersQueryDto {
   @Max(100)
   limit: number = 10;
 
+  @ApiPropertyOptional({ type: UserFilterDto })
   @IsOptional()
   @ValidateNested()
   @Type(() => UserFilterDto)
