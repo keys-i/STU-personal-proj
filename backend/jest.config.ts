@@ -3,7 +3,7 @@ import type { Config } from 'jest';
 const config: Config = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
-
+  coverageProvider: 'babel',
   extensionsToTreatAsEsm: ['.ts'],
 
   transform: {
@@ -22,6 +22,8 @@ const config: Config = {
 
   testMatch: ['**/*.spec.ts'],
   moduleFileExtensions: ['ts', 'js', 'json'],
+  testPathIgnorePatterns: ['/node_modules/', '/dist/', '/generated/'],
+  coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/generated/'],
 };
 
 export default config;

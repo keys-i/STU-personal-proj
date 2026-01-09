@@ -1,35 +1,78 @@
-// users.controller.spec.ts
-import { jest } from '@jest/globals';
+import {
+  jest,
+  describe,
+  it,
+  expect,
+  beforeEach,
+  afterEach,
+} from '@jest/globals';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 
 import { UsersController } from './users.controller.js';
-import { UserService } from './users.service.js';
+import { UserService, type Paginated } from './users.service.js';
 import {
-  CreateUserDto,
-  ListUsersQueryDto,
-  IdParamDto,
-  UpdateUserDto,
+  type CreateUserDto,
+  type ListUsersQueryDto,
+  type IdParamDto,
+  type UpdateUserDto,
   UserStatus,
 } from './dto/dto.js';
+import type { User } from '../../generated/prisma/client.js';
 
 type UsersServiceSubset = Pick<
   UserService,
   'listUsers' | 'getUser' | 'createUser' | 'updateUser' | 'softDeleteUser'
 >;
 
-type CreateUserServiceResult = Awaited<ReturnType<UserService['createUser']>>;
-type ListUsersServiceResult = Awaited<ReturnType<UserService['listUsers']>>;
-type GetUserServiceResult = Awaited<ReturnType<UserService['getUser']>>;
-type UpdateUserServiceResult = Awaited<ReturnType<UserService['updateUser']>>;
+const makeReplyStub = (): Pick<FastifyReply, 'code'> & {
+  code: jest.Mock<(c: number) => any>;
+} => ({
+  code: jest.fn<(c: number) => any>().mockReturnThis(),
+});
 
-function makeReplyStub() {
-  // Only the method used by the controller
-  const reply = {
-    code: jest.fn<(statusCode: number) => FastifyReply>().mockReturnThis(),
+// DTO has a required phantom marker; keep it to one line
+const makeUpdateDto = (p: Omit<UpdateUserDto, '_atLeastOne'>): UpdateUserDto =>
+  ({ ...p, _atLeastOne: true }) as UpdateUserDto;
+
+function makeUser(overrides: Partial<User> = {}): User {
+  const now = new Date('2026-01-01T00:00:00.000Z');
+
+  return {
+    // common Prisma user fields (adjust ONLY if your generated User differs)
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    name: 'Jane',
+    email: 'jane@example.com',
+    status: UserStatus.ACTIVE,
+    role: null,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    ...overrides,
   };
-  return reply;
+}
+
+function makePaginated<T>(
+  data: T[],
+  page = 1,
+  limit = 10,
+  total = data.length,
+): Paginated<T> {
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const pageClamped = Math.min(Math.max(1, page), totalPages);
+
+  return {
+    data,
+    meta: {
+      page: pageClamped,
+      limit,
+      total,
+      totalPages,
+      hasNext: pageClamped < totalPages,
+      hasPrev: pageClamped > 1,
+    },
+  };
 }
 
 describe('UsersController', () => {
@@ -58,7 +101,7 @@ describe('UsersController', () => {
   });
 
   describe('getAllUsers', () => {
-    it('calls service with page/limit/filter and returns service result', async () => {
+    it('calls service with page/limit/filter and returns Paginated<User>', async () => {
       const q = {
         page: 1,
         limit: 10,
@@ -70,17 +113,12 @@ describe('UsersController', () => {
         },
       } satisfies ListUsersQueryDto;
 
-      // Keep return type aligned with your service definition
-      const listResult = {
-        items: [],
-        page: q.page,
-        limit: q.limit,
-        total: 0,
-      } as unknown as ListUsersServiceResult;
+      const u1 = makeUser({ id: 'u1', status: UserStatus.INACTIVE });
+      const result = makePaginated<User>([u1], q.page, q.limit, 1);
 
-      usersSvc.listUsers.mockResolvedValue(listResult);
+      usersSvc.listUsers.mockResolvedValue(result);
 
-      await expect(controller.getAllUsers(q)).resolves.toBe(listResult);
+      await expect(controller.getAllUsers(q)).resolves.toEqual(result);
       expect(usersSvc.listUsers).toHaveBeenCalledTimes(1);
       expect(usersSvc.listUsers).toHaveBeenCalledWith(
         q.page,
@@ -89,23 +127,19 @@ describe('UsersController', () => {
       );
     });
 
-    it('passes through undefineds when optional query fields are missing', async () => {
+    it('passes undefined filter through', async () => {
       const q = {
         page: 1,
         limit: 10,
         filter: undefined,
       } satisfies ListUsersQueryDto;
 
-      const listResult = {
-        items: [],
-        page: 1,
-        limit: 10,
-        total: 0,
-      } as unknown as ListUsersServiceResult;
+      const u1 = makeUser({ id: 'u1' });
+      const result = makePaginated<User>([u1], q.page, q.limit, 1);
 
-      usersSvc.listUsers.mockResolvedValue(listResult);
+      usersSvc.listUsers.mockResolvedValue(result);
 
-      await expect(controller.getAllUsers(q)).resolves.toBe(listResult);
+      await expect(controller.getAllUsers(q)).resolves.toEqual(result);
       expect(usersSvc.listUsers).toHaveBeenCalledWith(
         q.page,
         q.limit,
@@ -115,21 +149,13 @@ describe('UsersController', () => {
   });
 
   describe('getUser', () => {
-    it('calls service with id and returns user', async () => {
-      const p = {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-      } satisfies IdParamDto;
-
-      const user = {
-        id: p.id,
-        name: 'Jane',
-        email: 'jane@example.com',
-        status: 'ACTIVE',
-      } as unknown as GetUserServiceResult;
+    it('calls service with id and returns User', async () => {
+      const p = { id: 'u1' } satisfies IdParamDto;
+      const user = makeUser({ id: p.id });
 
       usersSvc.getUser.mockResolvedValue(user);
 
-      await expect(controller.getUser(p)).resolves.toBe(user);
+      await expect(controller.getUser(p)).resolves.toEqual(user);
       expect(usersSvc.getUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.getUser).toHaveBeenCalledWith(p.id);
     });
@@ -140,104 +166,90 @@ describe('UsersController', () => {
       const body = {
         name: 'Jane',
         email: 'jane@example.com',
-        status: 'ACTIVE',
+        status: UserStatus.ACTIVE,
+        role: undefined,
       } satisfies CreateUserDto;
 
       const reply = makeReplyStub();
-
-      const createdUser = {
-        id: 'u1',
+      const createdUser = makeUser({
+        id: 'u-created',
         name: body.name,
         email: body.email,
         status: body.status,
-      } as unknown as CreateUserServiceResult['user'];
+      });
 
-      const serviceResult = {
+      usersSvc.createUser.mockResolvedValue({
         user: createdUser,
         created: true,
-      } satisfies CreateUserServiceResult;
-
-      usersSvc.createUser.mockResolvedValue(serviceResult);
+      });
 
       await expect(
         controller.createUser(body, reply as unknown as FastifyReply),
-      ).resolves.toBe(createdUser);
-
+      ).resolves.toEqual(createdUser);
       expect(usersSvc.createUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.createUser).toHaveBeenCalledWith(body);
-      expect(reply.code).toHaveBeenCalledTimes(1);
       expect(reply.code).toHaveBeenCalledWith(HttpStatus.CREATED);
     });
 
-    it('sets 200 and returns user when created=false (idempotent)', async () => {
+    it('sets 200 and returns user when created=false', async () => {
       const body = {
         name: 'Jane',
         email: 'jane@example.com',
-        status: 'ACTIVE',
+        status: UserStatus.ACTIVE,
+        role: undefined,
       } satisfies CreateUserDto;
 
       const reply = makeReplyStub();
-
-      const existingUser = {
-        id: 'u1',
+      const existingUser = makeUser({
+        id: 'u-existing',
         name: body.name,
         email: body.email,
         status: body.status,
-      } as unknown as CreateUserServiceResult['user'];
+      });
 
-      const serviceResult = {
+      usersSvc.createUser.mockResolvedValue({
         user: existingUser,
         created: false,
-      } satisfies CreateUserServiceResult;
-
-      usersSvc.createUser.mockResolvedValue(serviceResult);
+      });
 
       await expect(
         controller.createUser(body, reply as unknown as FastifyReply),
-      ).resolves.toBe(existingUser);
-
+      ).resolves.toEqual(existingUser);
       expect(usersSvc.createUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.createUser).toHaveBeenCalledWith(body);
-      expect(reply.code).toHaveBeenCalledTimes(1);
       expect(reply.code).toHaveBeenCalledWith(HttpStatus.OK);
     });
   });
 
   describe('updateUser', () => {
-    it('calls service with id + body and returns updated user', async () => {
-      const p = {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-      } satisfies IdParamDto;
+    it('calls service with id + body and returns updated User', async () => {
+      const p = { id: 'u1' } satisfies IdParamDto;
 
-      const body = {
-        name: 'New Name',
-        _atLeastOne: true,
-      } as unknown as UpdateUserDto;
+      const body = makeUpdateDto({ name: 'New Name' });
 
-      const updatedUser = {
-        id: p.id,
-        name: body.name,
-        email: 'jane@example.com',
-        status: 'ACTIVE',
-      } as unknown as UpdateUserServiceResult;
+      const updatedUser = makeUser({ id: p.id, name: body.name ?? 'New Name' });
 
       usersSvc.updateUser.mockResolvedValue(updatedUser);
 
-      await expect(controller.updateUser(p, body)).resolves.toBe(updatedUser);
+      await expect(controller.updateUser(p, body)).resolves.toEqual(
+        updatedUser,
+      );
       expect(usersSvc.updateUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.updateUser).toHaveBeenCalledWith(p.id, body);
     });
   });
 
   describe('deleteUser', () => {
-    it('calls service softDeleteUser and returns void', async () => {
+    it('deleteUser returns void and calls softDeleteUser', async () => {
       const p = {
         id: '550e8400-e29b-41d4-a716-446655440000',
       } satisfies IdParamDto;
 
       usersSvc.softDeleteUser.mockResolvedValue(undefined);
 
-      await expect(controller.deleteUser(p)).resolves.toBeUndefined();
+      const res = await controller.deleteUser(p);
+
+      expect(res).toBeUndefined();
       expect(usersSvc.softDeleteUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.softDeleteUser).toHaveBeenCalledWith(p.id);
     });

@@ -9,6 +9,7 @@ export class CreateUserDto {
   name!: string;
 
   @ApiProperty({ example: 'jane@example.com' })
+  @IsOptional()
   @IsEmail()
   email!: string;
 

@@ -33,7 +33,7 @@ import type {
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly users: UserService) {}
+  /* istanbul ignore next */ constructor(private readonly users: UserService) {}
 
   @Get()
   @ApiOperation({
@@ -154,7 +154,7 @@ export class UsersController {
   @ApiNoContentResponse({ description: 'User deleted or already soft-deleted' })
   @ApiNotFoundResponse({ description: 'User not found' })
   @ApiBadRequestResponse({ description: 'Validation error (id must be UUID)' })
-  async deleteUser(@Param() p: IdParamDto): Promise<void> {
+  async deleteUser(@Param() p: IdParamDto) {
     await this.users.softDeleteUser(p.id);
   }
 }

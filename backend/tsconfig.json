@@ -22,7 +22,7 @@
     "isolatedModules": true,
 
     "declaration": false,
-    "removeComments": true,
+    "removeComments": false,
 
     "strictNullChecks": true,
     "noImplicitAny": false,

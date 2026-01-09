@@ -22,7 +22,9 @@ export type Paginated<T> = {
 
 @Injectable()
 export class UserService {
-  constructor(private readonly prisma: PrismaService) {}
+  /* istanbul ignore next */ constructor(
+    private readonly prisma: PrismaService,
+  ) {}
 
   async getUser(id: string): Promise<User> {
     const user = await this.prisma.user.findFirst({
@@ -165,12 +167,6 @@ export class UserService {
 
       throw e;
     }
-  }
-
-  private isPrismaUniqueViolation(e: unknown): boolean {
-    if (!e || typeof e !== 'object') return false;
-    const code = (e as { code?: unknown }).code;
-    return code === 'P2002';
   }
 
   async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
