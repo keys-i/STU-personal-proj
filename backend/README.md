@@ -145,3 +145,10 @@ If you use `DATABASE_URL`, set it directly (avoid `${VAR}` expansion inside `.en
 ```env
 DATABASE_URL=postgresql://stu:stu_password@db:5432/stu?schema=public
 ```
+
+> ## Notes
+>
+> - Keep modules focused (Users module owns `/users` routes + logic).
+> - Keep validation at the edges (DTOs in controllers).
+> - Keep DB logic in services (Prisma queries).
+> - Prefer migrations over manual DB changes.
