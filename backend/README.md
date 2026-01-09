@@ -12,7 +12,7 @@ CRUD backend for practicing modern JS/TS backend patterns with NestJS, Prisma, P
 
 This README lives in `backend/`, so paths below are relative to `backend/` unless stated otherwise.
 
-```
+```bash
 backend/
 ├── .actrc
 ├── .gitignore
@@ -125,6 +125,15 @@ npx prisma studio
 ```
 
 ## API Overview
+
+| Endpoint     | Method | Params                                                   | Query                                                                                                                                                                                                                                                                                                                 | Rules / Notes                                                           |
+| ------------ | ------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `/users`     | GET    | -                                                        | `page` (default `1`, must be positive int)<br>`limit` (default `10`, must be `1–100`)<br>`filter[name]` (optional, ≤100 chars, partial match, case-insensitive)<br>`filter[status]` (optional: `ACTIVE \| INACTIVE \| SUSPENDED`)<br>`filter[fromDate]` / `filter[toDate]` (optional ISO dates, `fromDate <= toDate`) | Soft-deleted excluded by default (`deletedAt IS NULL`)                  |
+| `/users/:id` | GET    | `id` (UUID)                                              | -                                                                                                                                                                                                                                                                                                                     | 404 if missing or soft-deleted                                          |
+| `/users`     | POST   | Body: `{ name, email, status, role? }`                   | -                                                                                                                                                                                                                                                                                                                     | Validates inputs before write; `email` must be valid + unique           |
+| `/users/:id` | PATCH  | `id` (UUID)<br>Body: `{ name?, email?, status?, role? }` | -                                                                                                                                                                                                                                                                                                                     | At least one field required; not allowed if soft-deleted (treat as 404) |
+| `/users/:id` | DELETE | `id` (UUID)                                              | -                                                                                                                                                                                                                                                                                                                     | Soft delete only (sets `deletedAt`)                                     |
+| `/health`    | GET    | -                                                        | -                                                                                                                                                                                                                                                                                                                     | Health check route                                                      |
 
 ## Environment variables
 
