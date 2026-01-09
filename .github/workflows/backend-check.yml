@@ -3,7 +3,6 @@ name: Check Backend Code
 on:
   push:
     branches: [main]
-
   pull_request:
     branches: [main]
 
@@ -28,6 +27,18 @@ jobs:
       - name: Install deps
         run: |
           npm ci
+
+      - name: Load env (examples/examples.env)
+        shell: bash
+        run: |
+          FILE="examples/examples.env"
+          test -f "$FILE" || { echo "Missing $FILE" >&2; exit 1; }
+
+          # Supports lines like KEY=VALUE or `export KEY=VALUE`, ignores blanks/comments
+          sed -E 's/^export[[:space:]]+//' "$FILE" \
+            | grep -v '^[[:space:]]*#' \
+            | grep -v '^[[:space:]]*$' \
+            >> "$GITHUB_ENV"
           npx prisma generate
 
       - name: Lint
