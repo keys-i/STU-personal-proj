@@ -36,6 +36,7 @@ export default defineConfig([
       'prisma/**/*.ts',
       'prisma.config.ts',
       'eslint.config.ts',
+      'jest.config.ts',
     ],
     languageOptions: {
       globals: {

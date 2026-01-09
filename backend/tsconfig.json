@@ -29,7 +29,7 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
 
-    "types": ["node"],
+    "types": ["jest", "node"],
   },
   "include": [
     "src/**/*.ts",
@@ -37,6 +37,7 @@
     "prisma**/*.ts",
     "prisma.config.ts",
     "eslint.config.ts",
+    "jest.config.ts",
   ],
   "exclude": ["dist", "node_modules", "coverage"],
 }
