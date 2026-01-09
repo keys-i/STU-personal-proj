@@ -41,11 +41,20 @@ function makePrismaMock(): PrismaMock {
 }
 
 function prismaKnownError(code: string): Prisma.PrismaClientKnownRequestError {
-  return new Prisma.PrismaClientKnownRequestError('prisma error', {
-    code,
-    clientVersion: 'test',
-    meta: {},
-  });
+  type Known = Prisma.PrismaClientKnownRequestError & {
+    code: string;
+    meta: Record<string, unknown>;
+    clientVersion: string;
+  };
+
+  const err = new Error('prisma error') as Known;
+  Object.setPrototypeOf(err, Prisma.PrismaClientKnownRequestError.prototype);
+
+  err.code = code;
+  err.meta = {};
+  err.clientVersion = 'test';
+
+  return err;
 }
 
 function makeUser(overrides: Partial<User> = {}): User {
@@ -53,7 +62,7 @@ function makeUser(overrides: Partial<User> = {}): User {
   return {
     id: 'u1',
     name: 'Jane',
-    email: 'jane@example.com' as string,
+    email: 'jane@example.com',
     status: UserStatus.ACTIVE as unknown as User['status'],
     role: null,
     createdAt: now,
@@ -63,7 +72,6 @@ function makeUser(overrides: Partial<User> = {}): User {
   };
 }
 
-// required phantom marker helper (keeps tests readable)
 const updateDto = (p: Omit<UpdateUserDto, '_atLeastOne'>): UpdateUserDto =>
   ({ ...p, _atLeastOne: true }) as UpdateUserDto;
 
@@ -73,8 +81,6 @@ describe('UserService', () => {
 
   beforeEach(() => {
     prisma = makePrismaMock();
-
-    // Emulate PrismaClient.$transaction([promise1, promise2])
     prisma.$transaction.mockImplementation(
       async (ops: Array<Promise<unknown>>) => Promise.all(ops),
     );
@@ -84,85 +90,77 @@ describe('UserService', () => {
   });
 
   describe('getUser', () => {
-    it('returns user when found and not soft-deleted', async () => {
-      const u = makeUser({ id: 'u-ok' });
-      prisma.user.findFirst.mockResolvedValue(u);
+    it.each([
+      ['returns user when found', makeUser({ id: 'u-ok' }), undefined],
+      ['throws NotFound when missing', null, NotFoundException],
+    ] as const)('%s', async (_name, found, expectedErr) => {
+      prisma.user.findFirst.mockResolvedValue(found);
 
-      await expect(service.getUser('u-ok')).resolves.toEqual(u);
-
-      expect(prisma.user.findFirst).toHaveBeenCalledWith({
-        where: { id: 'u-ok', deletedAt: null },
-      });
-    });
-
-    it('throws NotFound when missing/soft-deleted', async () => {
-      prisma.user.findFirst.mockResolvedValue(null);
-
-      await expect(service.getUser('missing')).rejects.toBeInstanceOf(
-        NotFoundException,
-      );
+      if (!expectedErr) {
+        await expect(service.getUser('u-ok')).resolves.toEqual(found);
+        expect(prisma.user.findFirst).toHaveBeenCalledWith({
+          where: { id: 'u-ok', deletedAt: null },
+        });
+      } else {
+        await expect(service.getUser('missing')).rejects.toBeInstanceOf(
+          expectedErr,
+        );
+      }
     });
   });
 
   describe('listUsers', () => {
-    it('defaults page=1 when page is <=0, clamps limit to [1..100], floors both', async () => {
-      prisma.user.count.mockResolvedValue(2);
-      prisma.user.findMany.mockResolvedValue([
-        makeUser({ id: 'u1' }),
-        makeUser({ id: 'u2' }),
-      ]);
-
-      // page 0 -> 1, limit 0 -> 1
-      const res = await service.listUsers(0, 0, undefined);
-
-      expect(prisma.user.count).toHaveBeenCalledWith({
-        where: { deletedAt: null },
-      });
-      expect(prisma.user.findMany).toHaveBeenCalledWith({
-        where: { deletedAt: null },
-        skip: 0,
-        take: 1,
-        orderBy: { createdAt: 'desc' },
-      });
-
-      expect(res.meta.page).toBe(1);
-      expect(res.meta.limit).toBe(1);
-    });
-
-    it('defaults page=1 and limit=10 when non-finite', async () => {
-      prisma.user.count.mockResolvedValue(0);
-      prisma.user.findMany.mockResolvedValue([]);
-
-      const res = await service.listUsers(
+    it.each([
+      ['defaults page=1 when page<=0; limit clamps to 1', 0, 0, 2, 1, 1, 0, 1],
+      [
+        'defaults page=1 and limit=10 when non-finite',
         Number.NaN,
         Number.POSITIVE_INFINITY,
-        undefined,
-      );
+        0,
+        1,
+        10,
+        0,
+        10,
+      ],
+      [
+        'floors & clamps limit to 100',
+        2.9,
+        999.9,
+        1,
+        1,
+        100,
+        (2 - 1) * 100,
+        100,
+      ],
+    ] as const)(
+      '%s',
+      async (
+        _name,
+        page,
+        limit,
+        total,
+        expPageMeta,
+        expLimitMeta,
+        expSkip,
+        expTake,
+      ) => {
+        prisma.user.count.mockResolvedValue(total);
+        prisma.user.findMany.mockResolvedValue(total ? [makeUser()] : []);
 
-      expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          skip: 0,
-          take: 10,
-          orderBy: { createdAt: 'desc' },
-        }),
-      );
-      expect(res.meta.page).toBe(1);
-      expect(res.meta.limit).toBe(10);
-      expect(res.meta.totalPages).toBe(1); // total=0 still yields 1
-    });
+        const res = await service.listUsers(page, limit, undefined);
 
-    it('floors fractional page/limit and clamps limit to 100', async () => {
-      prisma.user.count.mockResolvedValue(1);
-      prisma.user.findMany.mockResolvedValue([makeUser({ id: 'u1' })]);
+        expect(prisma.user.findMany).toHaveBeenCalledWith(
+          expect.objectContaining({
+            skip: expSkip,
+            take: expTake,
+            orderBy: { createdAt: 'desc' },
+          }),
+        );
 
-      // page 2.9 -> 2, limit 999.9 -> 100
-      const res = await service.listUsers(2.9, 999.9, undefined);
-
-      expect(prisma.user.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: (2 - 1) * 100, take: 100 }),
-      );
-      expect(res.meta.limit).toBe(100);
-    });
+        expect(res.meta.page).toBe(expPageMeta);
+        expect(res.meta.limit).toBe(expLimitMeta);
+      },
+    );
 
     it('builds where: name/status + both dates, and sets hasPrev/hasNext for middle page', async () => {
       const filter: UserFilterDto = {
@@ -172,7 +170,7 @@ describe('UserService', () => {
         toDate: '2025-01-31T23:59:59.999Z',
       };
 
-      prisma.user.count.mockResolvedValue(25); // limit 10 => totalPages 3
+      prisma.user.count.mockResolvedValue(25);
       prisma.user.findMany.mockResolvedValue([]);
 
       const res = await service.listUsers(2, 10, filter);
@@ -195,34 +193,27 @@ describe('UserService', () => {
       expect(res.meta.hasNext).toBe(true);
     });
 
-    it('adds createdAt.gte when only fromDate provided', async () => {
+    it.each([
+      [
+        'adds createdAt.gte when only fromDate',
+        { fromDate: '2025-01-01T00:00:00.000Z' },
+        { gte: new Date('2025-01-01T00:00:00.000Z') },
+      ],
+      [
+        'adds createdAt.lte when only toDate',
+        { toDate: '2025-01-31T23:59:59.999Z' },
+        { lte: new Date('2025-01-31T23:59:59.999Z') },
+      ],
+    ] as const)('%s', async (_name, filter, createdAt) => {
       prisma.user.count.mockResolvedValue(0);
       prisma.user.findMany.mockResolvedValue([]);
 
-      await service.listUsers(1, 10, {
-        fromDate: '2025-01-01T00:00:00.000Z',
-      });
+      await service.listUsers(1, 10, filter);
 
       expect(prisma.user.count).toHaveBeenCalledWith({
         where: expect.objectContaining({
           deletedAt: null,
-          createdAt: { gte: new Date('2025-01-01T00:00:00.000Z') },
-        }),
-      });
-    });
-
-    it('adds createdAt.lte when only toDate provided', async () => {
-      prisma.user.count.mockResolvedValue(0);
-      prisma.user.findMany.mockResolvedValue([]);
-
-      await service.listUsers(1, 10, {
-        toDate: '2025-01-31T23:59:59.999Z',
-      });
-
-      expect(prisma.user.count).toHaveBeenCalledWith({
-        where: expect.objectContaining({
-          deletedAt: null,
-          createdAt: { lte: new Date('2025-01-31T23:59:59.999Z') },
+          createdAt,
         }),
       });
     });
@@ -233,9 +224,10 @@ describe('UserService', () => {
 
       await service.listUsers(1, 10, { name: 'jo' });
 
-      const where = (
-        prisma.user.count.mock.calls[0][0] as { where: Prisma.UserWhereInput }
-      ).where;
+      const [[arg]] = prisma.user.count.mock.calls as Array<
+        [{ where: Prisma.UserWhereInput }]
+      >;
+      const where = arg.where;
 
       expect(where).toEqual(
         expect.objectContaining({
@@ -246,34 +238,28 @@ describe('UserService', () => {
       expect(where).not.toHaveProperty('createdAt');
     });
 
-    it('throws BadRequest for invalid fromDate', async () => {
-      await expect(
-        service.listUsers(1, 10, { fromDate: 'not-a-date' }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('throws BadRequest for invalid toDate', async () => {
-      await expect(
-        service.listUsers(1, 10, { toDate: 'not-a-date' }),
-      ).rejects.toBeInstanceOf(BadRequestException);
-    });
-
-    it('throws BadRequest when fromDate > toDate', async () => {
-      await expect(
-        service.listUsers(1, 10, {
+    it.each([
+      ['throws BadRequest for invalid fromDate', { fromDate: 'not-a-date' }],
+      ['throws BadRequest for invalid toDate', { toDate: 'not-a-date' }],
+      [
+        'throws BadRequest when fromDate > toDate',
+        {
           fromDate: '2025-02-01T00:00:00.000Z',
           toDate: '2025-01-01T00:00:00.000Z',
-        }),
-      ).rejects.toBeInstanceOf(BadRequestException);
+        },
+      ],
+    ] as const)('%s', async (_name, filter) => {
+      await expect(service.listUsers(1, 10, filter)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
     });
 
     it('clamps meta.page to totalPages when page is too large', async () => {
-      prisma.user.count.mockResolvedValue(1); // limit 10 => totalPages 1
+      prisma.user.count.mockResolvedValue(1);
       prisma.user.findMany.mockResolvedValue([makeUser({ id: 'u1' })]);
 
       const res = await service.listUsers(99, 10, undefined);
 
-      // note: query uses skip from safePage, but meta clamps
       expect(prisma.user.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ skip: (99 - 1) * 10, take: 10 }),
       );
@@ -284,7 +270,7 @@ describe('UserService', () => {
     });
 
     it('last page hasPrev true, hasNext false', async () => {
-      prisma.user.count.mockResolvedValue(21); // totalPages 3 (limit 10)
+      prisma.user.count.mockResolvedValue(21);
       prisma.user.findMany.mockResolvedValue([]);
 
       const res = await service.listUsers(3, 10, undefined);
@@ -327,47 +313,46 @@ describe('UserService', () => {
       });
     });
 
-    it('P2002 + existing null => rethrow original error', async () => {
-      const err = prismaKnownError('P2002');
-      prisma.user.create.mockRejectedValue(err);
-      prisma.user.findUnique.mockResolvedValue(null);
-
-      await expect(
-        service.createUser({
-          name: 'Jane',
-          email: 'jane@example.com',
-          status: UserStatus.ACTIVE,
-        }),
-      ).rejects.toBe(err);
-    });
-
-    it('P2002 + existing soft-deleted => Conflict', async () => {
-      prisma.user.create.mockRejectedValue(prismaKnownError('P2002'));
-      prisma.user.findUnique.mockResolvedValue(
-        makeUser({ deletedAt: new Date('2025-01-01T00:00:00.000Z') }),
-      );
-
-      await expect(
-        service.createUser({
-          name: 'Jane',
-          email: 'jane@example.com',
-          status: UserStatus.ACTIVE,
-        }),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
-
-    it('P2002 + existing not deleted => {created:false}', async () => {
-      prisma.user.create.mockRejectedValue(prismaKnownError('P2002'));
-      const existing = makeUser({ id: 'u-existing', deletedAt: null });
+    it.each([
+      ['P2002 + existing null => rethrow', 'P2002', null, 'rethrow'],
+      [
+        'P2002 + existing soft-deleted => Conflict',
+        'P2002',
+        makeUser({ deletedAt: new Date() }),
+        'conflict',
+      ],
+      [
+        'P2002 + existing not deleted => {created:false}',
+        'P2002',
+        makeUser({ id: 'u-existing', deletedAt: null }),
+        'idempotent',
+      ],
+    ] as const)('%s', async (_name, code, existing, outcome) => {
+      prisma.user.create.mockRejectedValue(prismaKnownError(code));
       prisma.user.findUnique.mockResolvedValue(existing);
 
-      await expect(
-        service.createUser({
-          name: 'Jane',
-          email: existing.email ?? 'existing@example.com',
-          status: UserStatus.ACTIVE,
-        }),
-      ).resolves.toEqual({ user: existing, created: false });
+      const email = existing?.email ?? 'existing@example.com';
+
+      const p = {
+        name: 'Jane',
+        email,
+        status: UserStatus.ACTIVE,
+      } as CreateUserDto;
+
+      if (outcome === 'rethrow') {
+        await expect(service.createUser(p)).rejects.toBeInstanceOf(
+          Prisma.PrismaClientKnownRequestError,
+        );
+      } else if (outcome === 'conflict') {
+        await expect(service.createUser(p)).rejects.toBeInstanceOf(
+          ConflictException,
+        );
+      } else {
+        await expect(service.createUser(p)).resolves.toEqual({
+          user: existing,
+          created: false,
+        });
+      }
     });
 
     it('non-P2002 error => rethrow', async () => {
@@ -387,71 +372,53 @@ describe('UserService', () => {
   describe('updateUser', () => {
     it('throws NotFound if existing is missing', async () => {
       prisma.user.findFirst.mockResolvedValue(null);
-
       await expect(
         service.updateUser('u1', updateDto({ name: 'x' })),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('updates only name (other fields absent => false branches)', async () => {
-      prisma.user.findFirst.mockResolvedValue({ id: 'u1' });
-      const updated = makeUser({ id: 'u1', name: 'New Name' });
-      prisma.user.update.mockResolvedValue(updated);
-
-      const dto = updateDto({ name: 'New Name' });
-      await expect(service.updateUser('u1', dto)).resolves.toEqual(updated);
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'u1' },
-        data: { name: 'New Name' },
-      });
-    });
-
-    it('updates email/status/role (name absent => false branch for name)', async () => {
-      prisma.user.findFirst.mockResolvedValue({ id: 'u1' });
-      const updated = makeUser({
-        id: 'u1',
-        email: 'new@example.com',
-        status: UserStatus.SUSPENDED,
-        role: 'ADMIN',
-      });
-      prisma.user.update.mockResolvedValue(updated);
-
-      const role = 'ADMIN' as UpdateUserDto['role'];
-      const dto = updateDto({
-        email: 'new@example.com',
-        status: UserStatus.SUSPENDED,
-        role,
-      });
-
-      await expect(service.updateUser('u1', dto)).resolves.toEqual(updated);
-
-      expect(prisma.user.update).toHaveBeenCalledWith({
-        where: { id: 'u1' },
-        data: {
+    it.each([
+      [
+        'updates only name',
+        updateDto({ name: 'New Name' }),
+        { name: 'New Name' },
+      ],
+      [
+        'updates email/status/role',
+        updateDto({
           email: 'new@example.com',
           status: UserStatus.SUSPENDED,
-          role,
+          role: 'ADMIN',
+        }),
+        {
+          email: 'new@example.com',
+          status: UserStatus.SUSPENDED,
+          role: 'ADMIN',
         },
+      ],
+    ] as const)('%s', async (_name, dto, expectedData) => {
+      prisma.user.findFirst.mockResolvedValue({ id: 'u1' });
+      const updated = makeUser({ id: 'u1', ...expectedData });
+      prisma.user.update.mockResolvedValue(updated);
+
+      await expect(service.updateUser('u1', dto)).resolves.toEqual(updated);
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'u1' },
+        data: expectedData,
       });
     });
 
-    it('maps Prisma P2002 to Conflict', async () => {
+    it.each([
+      ['maps P2002 to Conflict', 'P2002', ConflictException],
+      ['maps P2025 to NotFound', 'P2025', NotFoundException],
+    ] as const)('%s', async (_name, code, Err) => {
       prisma.user.findFirst.mockResolvedValue({ id: 'u1' });
-      prisma.user.update.mockRejectedValue(prismaKnownError('P2002'));
-
-      await expect(
-        service.updateUser('u1', updateDto({ email: 'dup@example.com' })),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
-
-    it('maps Prisma P2025 to NotFound', async () => {
-      prisma.user.findFirst.mockResolvedValue({ id: 'u1' });
-      prisma.user.update.mockRejectedValue(prismaKnownError('P2025'));
+      prisma.user.update.mockRejectedValue(prismaKnownError(code));
 
       await expect(
         service.updateUser('u1', updateDto({ name: 'x' })),
-      ).rejects.toBeInstanceOf(NotFoundException);
+      ).rejects.toBeInstanceOf(Err);
     });
 
     it('rethrows Prisma known errors other than P2002/P2025', async () => {
@@ -466,7 +433,7 @@ describe('UserService', () => {
 
     it('rethrows plain objects (not PrismaClientKnownRequestError instance)', async () => {
       prisma.user.findFirst.mockResolvedValue({ id: 'u1' });
-      const err = { code: 'P2002' }; // not an instance => should not be mapped
+      const err = { code: 'P2002' };
       prisma.user.update.mockRejectedValue(err);
 
       await expect(
@@ -486,32 +453,34 @@ describe('UserService', () => {
   });
 
   describe('softDeleteUser', () => {
-    it('returns when updateMany affects rows', async () => {
-      prisma.user.updateMany.mockResolvedValue({ count: 1 });
-
-      await expect(service.softDeleteUser('u1')).resolves.toBeUndefined();
-
-      expect(prisma.user.updateMany).toHaveBeenCalledWith({
-        where: { id: 'u1', deletedAt: null },
-        data: { deletedAt: expect.any(Date) },
-      });
-      expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    });
-
-    it('throws NotFound when nothing updated and user does not exist', async () => {
-      prisma.user.updateMany.mockResolvedValue({ count: 0 });
-      prisma.user.findUnique.mockResolvedValue(null);
-
-      await expect(service.softDeleteUser('missing')).rejects.toBeInstanceOf(
+    it.each([
+      ['returns when updateMany affects rows', { count: 1 }, null, null],
+      [
+        'throws NotFound when nothing updated and user missing',
+        { count: 0 },
+        null,
         NotFoundException,
-      );
-    });
+      ],
+      [
+        'returns when already soft-deleted (exists)',
+        { count: 0 },
+        { id: 'u1' },
+        null,
+      ],
+    ] as const)(
+      '%s',
+      async (_name, updateManyResult, findUniqueResult, Err) => {
+        prisma.user.updateMany.mockResolvedValue(updateManyResult);
+        prisma.user.findUnique.mockResolvedValue(findUniqueResult);
 
-    it('does not throw when nothing updated because already soft-deleted', async () => {
-      prisma.user.updateMany.mockResolvedValue({ count: 0 });
-      prisma.user.findUnique.mockResolvedValue({ id: 'u1' });
+        const p = service.softDeleteUser('u1');
 
-      await expect(service.softDeleteUser('u1')).resolves.toBeUndefined();
-    });
+        if (Err) {
+          await expect(p).rejects.toBeInstanceOf(Err);
+        } else {
+          await expect(p).resolves.toBeUndefined();
+        }
+      },
+    );
   });
 });

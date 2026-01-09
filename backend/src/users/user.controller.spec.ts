@@ -1,3 +1,4 @@
+// users.controller.spec.ts
 import {
   jest,
   describe,
@@ -27,20 +28,17 @@ type UsersServiceSubset = Pick<
 >;
 
 const makeReplyStub = (): Pick<FastifyReply, 'code'> & {
-  code: jest.Mock<(c: number) => any>;
+  code: jest.Mock<(c: number) => unknown>;
 } => ({
   code: jest.fn<(c: number) => any>().mockReturnThis(),
 });
 
-// DTO has a required phantom marker; keep it to one line
 const makeUpdateDto = (p: Omit<UpdateUserDto, '_atLeastOne'>): UpdateUserDto =>
   ({ ...p, _atLeastOne: true }) as UpdateUserDto;
 
 function makeUser(overrides: Partial<User> = {}): User {
   const now = new Date('2026-01-01T00:00:00.000Z');
-
   return {
-    // common Prisma user fields (adjust ONLY if your generated User differs)
     id: '550e8400-e29b-41d4-a716-446655440000',
     name: 'Jane',
     email: 'jane@example.com',
@@ -101,45 +99,38 @@ describe('UsersController', () => {
   });
 
   describe('getAllUsers', () => {
-    it('calls service with page/limit/filter and returns Paginated<User>', async () => {
-      const q = {
-        page: 1,
-        limit: 10,
-        filter: {
-          name: 'jo',
-          status: UserStatus.INACTIVE,
-          fromDate: '2025-01-01T00:00:00.000Z',
-          toDate: '2025-01-31T23:59:59.999Z',
+    const cases: Array<[string, ListUsersQueryDto]> = [
+      [
+        'calls service with page/limit/filter',
+        {
+          page: 1,
+          limit: 10,
+          filter: {
+            name: 'jo',
+            status: UserStatus.INACTIVE,
+            fromDate: '2025-01-01T00:00:00.000Z',
+            toDate: '2025-01-31T23:59:59.999Z',
+          },
         },
-      } satisfies ListUsersQueryDto;
+      ],
+      [
+        'passes undefined filter through',
+        {
+          page: 1,
+          limit: 10,
+          filter: undefined,
+        },
+      ],
+    ];
 
-      const u1 = makeUser({ id: 'u1', status: UserStatus.INACTIVE });
-      const result = makePaginated<User>([u1], q.page, q.limit, 1);
-
-      usersSvc.listUsers.mockResolvedValue(result);
-
-      await expect(controller.getAllUsers(q)).resolves.toEqual(result);
-      expect(usersSvc.listUsers).toHaveBeenCalledTimes(1);
-      expect(usersSvc.listUsers).toHaveBeenCalledWith(
-        q.page,
-        q.limit,
-        q.filter,
-      );
-    });
-
-    it('passes undefined filter through', async () => {
-      const q = {
-        page: 1,
-        limit: 10,
-        filter: undefined,
-      } satisfies ListUsersQueryDto;
-
+    it.each<[string, ListUsersQueryDto]>(cases)('%s', async (_name, q) => {
       const u1 = makeUser({ id: 'u1' });
       const result = makePaginated<User>([u1], q.page, q.limit, 1);
 
       usersSvc.listUsers.mockResolvedValue(result);
 
       await expect(controller.getAllUsers(q)).resolves.toEqual(result);
+      expect(usersSvc.listUsers).toHaveBeenCalledTimes(1);
       expect(usersSvc.listUsers).toHaveBeenCalledWith(
         q.page,
         q.limit,
@@ -162,73 +153,63 @@ describe('UsersController', () => {
   });
 
   describe('createUser', () => {
-    it('sets 201 and returns user when created=true', async () => {
-      const body = {
-        name: 'Jane',
-        email: 'jane@example.com',
-        status: UserStatus.ACTIVE,
-        role: undefined,
-      } satisfies CreateUserDto;
+    const cases: Array<[string, CreateUserDto, number, boolean, string]> = [
+      [
+        'sets 201 when created=true',
+        {
+          name: 'Jane',
+          email: 'jane@example.com',
+          status: UserStatus.ACTIVE,
+          role: undefined,
+        },
+        HttpStatus.CREATED,
+        true,
+        'u-created',
+      ],
+      [
+        'sets 200 when created=false',
+        {
+          name: 'Jane',
+          email: 'jane@example.com',
+          status: UserStatus.ACTIVE,
+          role: undefined,
+        },
+        HttpStatus.OK,
+        false,
+        'u-existing',
+      ],
+    ];
 
-      const reply = makeReplyStub();
-      const createdUser = makeUser({
-        id: 'u-created',
-        name: body.name,
-        email: body.email,
-        status: body.status,
-      });
+    it.each<[string, CreateUserDto, number, boolean, string]>(cases)(
+      '%s',
+      async (_name, body, expectedCode, created, id) => {
+        const reply = makeReplyStub();
+        const user = makeUser({
+          id,
+          name: body.name,
+          email: body.email,
+          status: body.status,
+        });
 
-      usersSvc.createUser.mockResolvedValue({
-        user: createdUser,
-        created: true,
-      });
+        usersSvc.createUser.mockResolvedValue({ user, created });
 
-      await expect(
-        controller.createUser(body, reply as unknown as FastifyReply),
-      ).resolves.toEqual(createdUser);
-      expect(usersSvc.createUser).toHaveBeenCalledTimes(1);
-      expect(usersSvc.createUser).toHaveBeenCalledWith(body);
-      expect(reply.code).toHaveBeenCalledWith(HttpStatus.CREATED);
-    });
+        await expect(
+          controller.createUser(body, reply as unknown as FastifyReply),
+        ).resolves.toEqual(user);
 
-    it('sets 200 and returns user when created=false', async () => {
-      const body = {
-        name: 'Jane',
-        email: 'jane@example.com',
-        status: UserStatus.ACTIVE,
-        role: undefined,
-      } satisfies CreateUserDto;
-
-      const reply = makeReplyStub();
-      const existingUser = makeUser({
-        id: 'u-existing',
-        name: body.name,
-        email: body.email,
-        status: body.status,
-      });
-
-      usersSvc.createUser.mockResolvedValue({
-        user: existingUser,
-        created: false,
-      });
-
-      await expect(
-        controller.createUser(body, reply as unknown as FastifyReply),
-      ).resolves.toEqual(existingUser);
-      expect(usersSvc.createUser).toHaveBeenCalledTimes(1);
-      expect(usersSvc.createUser).toHaveBeenCalledWith(body);
-      expect(reply.code).toHaveBeenCalledWith(HttpStatus.OK);
-    });
+        expect(usersSvc.createUser).toHaveBeenCalledTimes(1);
+        expect(usersSvc.createUser).toHaveBeenCalledWith(body);
+        expect(reply.code).toHaveBeenCalledWith(expectedCode);
+      },
+    );
   });
 
   describe('updateUser', () => {
     it('calls service with id + body and returns updated User', async () => {
       const p = { id: 'u1' } satisfies IdParamDto;
-
       const body = makeUpdateDto({ name: 'New Name' });
 
       const updatedUser = makeUser({ id: p.id, name: body.name ?? 'New Name' });
-
       usersSvc.updateUser.mockResolvedValue(updatedUser);
 
       await expect(controller.updateUser(p, body)).resolves.toEqual(
@@ -240,7 +221,7 @@ describe('UsersController', () => {
   });
 
   describe('deleteUser', () => {
-    it('deleteUser returns void and calls softDeleteUser', async () => {
+    it('returns void and calls softDeleteUser', async () => {
       const p = {
         id: '550e8400-e29b-41d4-a716-446655440000',
       } satisfies IdParamDto;
