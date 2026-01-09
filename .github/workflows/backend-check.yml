@@ -24,16 +24,42 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
 
+      # Prisma engine cache (big win)
+      - name: Cache Prisma engines
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/prisma
+          key: ${{ runner.os }}-prisma-${{ hashFiles('backend/package-lock.json', 'backend/prisma/schema.prisma') }}
+          restore-keys: |
+            ${{ runner.os }}-prisma-
+
+      # Optional: ESLint cache (only helps if you use eslint --cache)
+      - name: Cache ESLint
+        uses: actions/cache@v4
+        with:
+          path: backend/.eslintcache
+          key: ${{ runner.os }}-eslint-${{ hashFiles('backend/package-lock.json', 'backend/eslint.config.ts') }}
+          restore-keys: |
+            ${{ runner.os }}-eslint-
+
+      # Optional: TypeScript incremental cache (only helps if typecheck is incremental)
+      - name: Cache TypeScript
+        uses: actions/cache@v4
+        with:
+          path: backend/.tsbuildinfo
+          key: ${{ runner.os }}-tsc-${{ hashFiles('backend/package-lock.json', 'backend/tsconfig.json') }}
+          restore-keys: |
+            ${{ runner.os }}-tsc-
+
       - name: Install deps
-        run: |
-          npm ci
+        run: npm ci
 
       - name: Load env (examples/examples.env)
         shell: bash
-        run: |
-          pwd && ls
-          cat examples/examples.env >> "$GITHUB_ENV"
-          npx prisma generate
+        run: cat examples/example.env >> "$GITHUB_ENV"
+
+      - name: Prisma generate
+        run: npx prisma generate
 
       - name: Lint
         run: npm run lint:check
