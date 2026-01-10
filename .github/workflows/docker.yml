@@ -10,57 +10,20 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: docker-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  discover:
-    runs-on: ubuntu-latest'
-    env:
-      DATABASE_URL: postgresql://${{ vars.POSTGRES_USER }}:${{ vars.POSTGRES_PASSWORD }}@${{ vars.POSTGRES_HOST }}:${{ vars.POSTGRES_PORT }}/${{ vars.POSTGRES_DB }}?schema=public
-    outputs:
-      matrix: ${{ steps.mk.outputs.matrix }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - id: mk
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          # Find all Dockerfile.<name> files
-          mapfile -d '' files < <(find . -type f -name 'Dockerfile.*' -print0 | sort -z)
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No Dockerfile.* found"
-            echo 'matrix={"include":[]}' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Build JSON matrix:
-          # - name: suffix after "Dockerfile."
-          # - dockerfile: path
-          # - context: repo root (works well with compose-style setups)
-          json='{"include":['
-          first=1
-          for f in "${files[@]}"; do
-            base="$(basename "$f")"          # Dockerfile.backend
-            name="${base#Dockerfile.}"       # backend
-            f="${f#./}"                      # strip leading ./
-
-            if [ $first -eq 1 ]; then first=0; else json+=','; fi
-            json+="{\"name\":\"$name\",\"dockerfile\":\"$f\",\"context\":\".\"}"
-          done
-          json+=']}'
-
-          echo "matrix=$json" >> "$GITHUB_OUTPUT"
-          echo "$json"
-
-  build:
-    needs: discover
-    if: ${{ fromJSON(needs.discover.outputs.matrix).include[0] != null }}
+  build-backend:
     runs-on: ubuntu-latest
 
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
+    env:
+      POSTGRES_HOST: ${{ vars.POSTGRES_HOST }}
+      POSTGRES_PORT: ${{ vars.POSTGRES_PORT || '5432' }}
+      POSTGRES_DB: ${{ vars.POSTGRES_DB }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -75,11 +38,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build DATABASE_URL from repo vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # If secrets/vars aren't available (e.g., fork PR), fall back to a harmless placeholder.
+          if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_HOST:-}" && -n "${POSTGRES_DB:-}" ]]; then
+            url="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public"
+          else
+            url="postgresql://postgres:postgres@localhost:5432/postgres?schema=public"
+          fi
+
+          echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
+
       - name: Docker metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-${{ matrix.name }}
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-backend
           tags: |
             type=sha
             type=ref,event=branch
@@ -89,10 +66,12 @@ jobs:
       - name: Build (and push on non-PR)
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
+          context: .
+          file: backend/Dockerfile.backend
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            DATABASE_URL=${{ env.DATABASE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
