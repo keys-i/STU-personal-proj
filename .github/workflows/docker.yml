@@ -10,15 +10,11 @@ permissions:
   contents: read
   packages: write
 
-concurrency:
-  group: docker-ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   discover:
     runs-on: ubuntu-latest'
     env:
-      DATABASE_URL: postgresql://${{ vars.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@${{ vars.POSTGRES_HOST }}:${{ vars.POSTGRES_PORT }}/${{ vars.POSTGRES_DB }}?schema=public
+      DATABASE_URL: postgresql://${{ vars.POSTGRES_USER }}:${{ vars.POSTGRES_PASSWORD }}@${{ vars.POSTGRES_HOST }}:${{ vars.POSTGRES_PORT }}/${{ vars.POSTGRES_DB }}?schema=public
     outputs:
       matrix: ${{ steps.mk.outputs.matrix }}
     steps:
