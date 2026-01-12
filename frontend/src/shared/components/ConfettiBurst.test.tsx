@@ -1,4 +1,3 @@
-// src/shared/components/ConfettiBurst.test.tsx
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 

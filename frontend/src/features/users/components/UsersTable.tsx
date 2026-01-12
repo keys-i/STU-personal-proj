@@ -49,17 +49,30 @@ export function UsersTable({
   );
 
   function commitLimit(): void {
-    const raw = Number(limitDraft);
+    const s = limitDraft.trim();
+
+    // treat empty as invalid (prevents Number("") === 0)
+    if (s === "") {
+      setLimitDraft(String(limit)); // revert
+      setEditingLimit(false);
+      return;
+    }
+
+    const raw = Number(s);
 
     if (!Number.isFinite(raw)) {
-      // revert
-      setLimitDraft(String(limit));
+      setLimitDraft(String(limit)); // revert
+      setEditingLimit(false);
       return;
     }
 
     const safe = clamp(Math.trunc(raw), 1, 100);
+
+    // optional: if user entered <1 or >100, you can either clamp (current)
+    // or treat as invalid. Keeping clamp is fine:
     if (safe !== limit) onLimitChange(safe);
-    setLimitDraft(""); // clear draft; render goes back to prop
+
+    setLimitDraft("");
     setEditingLimit(false);
   }
 

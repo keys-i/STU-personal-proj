@@ -1,13 +1,17 @@
+// src/setup.ts
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
 });
 
-const orignalError = console.error;
+const originalError = console.error;
+
 beforeAll(() => {
+  // Deterministic rAF/cAF for jsdom (works with vi.useFakeTimers())
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) =>
     window.setTimeout(() => cb(performance.now()), 0),
   );
@@ -15,6 +19,7 @@ beforeAll(() => {
     window.clearTimeout(id),
   );
 
+  // Silence React act() warning noise (keep real errors)
   console.error = (...args: unknown[]) => {
     const msg = String(args[0] ?? "");
     if (
@@ -23,7 +28,7 @@ beforeAll(() => {
     ) {
       return;
     }
-    orignalError(...args);
+    originalError(...args);
   };
 });
 
@@ -34,12 +39,13 @@ export function mockMatchMedia(opts: MatchMediaOpts = {}) {
 
   Object.defineProperty(window, "matchMedia", {
     writable: true,
+    configurable: true,
     value: vi.fn().mockImplementation((query: string) => ({
       matches,
       media: query,
       onchange: null,
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
+      addListener: vi.fn(), // legacy
+      removeListener: vi.fn(), // legacy
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
       dispatchEvent: vi.fn(),
@@ -86,10 +92,10 @@ export function ensureLocalStorage() {
   });
 }
 
-// run once for all tests
+// Run once for all tests
 ensureLocalStorage();
 mockMatchMedia({ matches: false });
 
 afterAll(() => {
-  console.error = orignalError;
+  console.error = originalError;
 });
