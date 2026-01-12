@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTheme } from "./useTheme";
-import { mockMatchMedia } from "../../test/setup";
+import { mockMatchMedia } from "../../../test/setup";
 
 const KEY = "stu.theme";
 

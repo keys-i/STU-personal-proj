@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     test: {
       environment: "jsdom",
-      setupFiles: ["./src/test/setup.ts"],
+      setupFiles: ["./test/setup.ts"],
       globals: false,
       css: true,
       clearMocks: true,
