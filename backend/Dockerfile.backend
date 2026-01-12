@@ -16,6 +16,9 @@ RUN apk add --no-cache libc6-compat openssl
 COPY --from=deps /app/stu-backend/node_modules ./node_modules
 COPY backend/ ./
 
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 RUN npx prisma generate
 RUN npm run build
 
@@ -27,6 +30,9 @@ RUN apk add --no-cache libc6-compat openssl
 
 ENV NODE_ENV=production
 ENV PORT=3000
+
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
 
 COPY --from=build /app/stu-backend/dist ./dist
 COPY --from=build /app/stu-backend/node_modules ./node_modules

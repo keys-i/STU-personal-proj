@@ -17,18 +17,13 @@ concurrency:
 jobs:
   build-backend:
     runs-on: ubuntu-latest
-    environment: actions
-    env:
-      POSTGRES_HOST: ${{ vars.POSTGRES_HOST || secrets.POSTGRES_HOST }}
-      POSTGRES_PORT: ${{ vars.POSTGRES_PORT || secrets.POSTGRES_PORT || '5432' }}
-      POSTGRES_DB: ${{ vars.POSTGRES_DB   || secrets.POSTGRES_DB }}
-      POSTGRES_USER: ${{ vars.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ vars.POSTGRES_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
         if: ${{ github.event_name != 'pull_request' }}
@@ -38,19 +33,35 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build DATABASE_URL from repo vars
+      # Key fix: create backend/.env so prisma generate can read DATABASE_URL during docker build
+      - name: Prepare dummy .env for Docker build
         shell: bash
         run: |
           set -euo pipefail
 
-          # If secrets/vars aren't available (e.g., fork PR), fall back to a harmless placeholder.
-          if [[ -n "${POSTGRES_USER:-}" && -n "${POSTGRES_PASSWORD:-}" && -n "${POSTGRES_HOST:-}" && -n "${POSTGRES_DB:-}" ]]; then
-            url="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public"
+          if [[ -f backend/examples/example.env ]]; then
+            cp backend/examples/example.env backend/.env
+          elif [[ -f backend/examples/examples.env ]]; then
+            cp backend/examples/examples.env backend/.env
           else
-            url="postgresql://postgres:postgres@localhost:5432/postgres?schema=public"
+            echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres?schema=public" > backend/.env
           fi
 
-          echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
+          # Hard fail if DATABASE_URL isn't present
+          grep -q '^DATABASE_URL=' backend/.env
+
+      # Ensure backend/.env is included in the Docker build context even if .dockerignore blocks *.env
+      - name: Whitelist backend/.env in dockerignore for this run
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo ""
+            echo "# Added by GitHub Actions for CI build"
+            echo "!backend/"
+            echo "!backend/.env"
+            echo "!backend/examples/"
+          } >> .dockerignore
 
       - name: Docker metadata (tags, labels)
         id: meta
@@ -71,7 +82,11 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            DATABASE_URL=${{ env.DATABASE_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Cleanup dummy env
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          rm -f backend/.env
