@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 type Rect = { left: number; top: number; width: number; height: number };
+type ToLayout = { left: number; top: number; width: number; maxH: number };
 
 function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
@@ -33,10 +34,11 @@ export function CreateUserMorph({
   subtitle,
 }: Props) {
   const cardRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const bodyRef = useRef<HTMLDivElement | null>(null);
 
   const rafRef = useRef<number>(0);
   const tokenRef = useRef(0);
-
   const showTimerRef = useRef<number | null>(null);
 
   const prefersReducedMotion = useMemo(() => {
@@ -46,7 +48,7 @@ export function CreateUserMorph({
     );
   }, []);
 
-  const computeToRect = (from: Rect): Rect => {
+  const computeToLayout = (from: Rect): ToLayout => {
     const pad = 16;
     const gap = 10;
 
@@ -69,27 +71,37 @@ export function CreateUserMorph({
       ? clamp(from.top + from.height + gap, pad, vh - pad - 240)
       : clamp(from.top - gap - 460, pad, vh - pad - 240);
 
-    const height = clamp(
-      openBelow ? Math.min(580, maxHBelow) : Math.min(580, maxHAbove),
-      280,
-      580,
-    );
+    const maxH = clamp(openBelow ? maxHBelow : maxHAbove, 220, 580);
 
-    return { left, top, width: targetW, height };
+    return { left, top, width: targetW, maxH };
   };
 
-  const applyRectVars = (rect: Rect, radiusPx: number) => {
+  const applyVars = (x: number, y: number, w: number, h: number, r: number) => {
     const card = cardRef.current;
     if (!card) return;
 
-    card.style.setProperty("--x", `${rect.left}px`);
-    card.style.setProperty("--y", `${rect.top}px`);
-    card.style.setProperty("--w", `${rect.width}px`);
-    card.style.setProperty("--h", `${rect.height}px`);
-    card.style.setProperty("--r", `${radiusPx}px`);
+    card.style.setProperty("--x", `${x}px`);
+    card.style.setProperty("--y", `${y}px`);
+    card.style.setProperty("--w", `${w}px`);
+    card.style.setProperty("--h", `${h}px`);
+    card.style.setProperty("--r", `${r}px`);
   };
 
-  // Hide anchor while open, show it back after close animation completes
+  const measureAndFitHeight = (maxH: number) => {
+    const headerEl = headerRef.current;
+    const bodyEl = bodyRef.current;
+    const card = cardRef.current;
+    if (!headerEl || !bodyEl || !card) return;
+
+    const headerH = headerEl.getBoundingClientRect().height;
+    const bodyContentH = bodyEl.scrollHeight; // includes padding
+    const want = headerH + bodyContentH;
+
+    const fitted = clamp(Math.ceil(want), 160, Math.ceil(maxH));
+    card.style.setProperty("--h", `${fitted}px`);
+  };
+
+  // Hide anchor while open; show after collapse completes
   useEffect(() => {
     const anchor = anchorRef.current;
     if (!anchor) return;
@@ -109,7 +121,6 @@ export function CreateUserMorph({
     if (open) {
       hideAnchor();
     } else {
-      // keep hidden until the card finishes collapsing
       hideAnchor();
       showTimerRef.current = window.setTimeout(
         () => {
@@ -126,7 +137,7 @@ export function CreateUserMorph({
     };
   }, [open, anchorRef, prefersReducedMotion]);
 
-  // OPEN/CLOSE positioning + morph via CSS vars
+  // OPEN/CLOSE: set rect vars; when open, fit height to content (clamped)
   useLayoutEffect(() => {
     const anchor = anchorRef.current;
     const card = cardRef.current;
@@ -140,16 +151,25 @@ export function CreateUserMorph({
     const from = getRect(anchor);
 
     if (open) {
-      const to = computeToRect(from);
+      const to = computeToLayout(from);
 
-      applyRectVars(from, 10);
+      // start at button rect (exact)
+      applyVars(from.left, from.top, from.width, from.height, 10);
 
+      // next frame: expand to target rect, then fit height to content
       rafRef.current = requestAnimationFrame(() => {
         if (token !== tokenRef.current) return;
-        applyRectVars(to, 14);
+        applyVars(to.left, to.top, to.width, Math.min(280, to.maxH), 14);
+
+        // wait one more frame so layout settles before measuring scrollHeight
+        requestAnimationFrame(() => {
+          if (token !== tokenRef.current) return;
+          measureAndFitHeight(to.maxH);
+        });
       });
     } else {
-      applyRectVars(from, 10);
+      // collapse back to button rect
+      applyVars(from.left, from.top, from.width, from.height, 10);
     }
 
     return () => {
@@ -157,7 +177,7 @@ export function CreateUserMorph({
     };
   }, [open, anchorRef]);
 
-  // Keep aligned on resize/scroll while open
+  // Keep aligned on resize/scroll while open (also refit height)
   useEffect(() => {
     if (!open) return;
 
@@ -166,8 +186,11 @@ export function CreateUserMorph({
       if (!anchor) return;
 
       const from = getRect(anchor);
-      const to = computeToRect(from);
-      applyRectVars(to, 14);
+      const to = computeToLayout(from);
+
+      applyVars(to.left, to.top, to.width, Math.min(280, to.maxH), 14);
+      // fit height to content after positional update
+      requestAnimationFrame(() => measureAndFitHeight(to.maxH));
     };
 
     window.addEventListener("resize", onReflow);
@@ -178,44 +201,63 @@ export function CreateUserMorph({
     };
   }, [open, anchorRef]);
 
+  // Also refit height if the form content changes size (validation errors, etc.)
+  useEffect(() => {
+    if (!open) return;
+
+    const bodyEl = bodyRef.current;
+    const anchor = anchorRef.current;
+    if (!bodyEl || !anchor) return;
+
+    const from = getRect(anchor);
+    const to = computeToLayout(from);
+
+    const ro = new ResizeObserver(() => {
+      measureAndFitHeight(to.maxH);
+    });
+
+    ro.observe(bodyEl);
+    return () => ro.disconnect();
+  }, [open, anchorRef, children]);
+
+  // Click outside closes (keeps input because state is lifted in UsersView)
   return (
     <>
-      {/* Backdrop is visual only; doesn't close and doesn't eat clicks */}
       <div
         className={`morphBackdrop ${open ? "morphBackdropOpen" : ""}`}
-        style={{ pointerEvents: "none" }}
+        style={{ pointerEvents: open ? "auto" : "none" }}
+        onMouseDown={() => onClose()}
+        onTouchStart={() => onClose()}
+        aria-hidden="true"
       />
 
       <div
         ref={cardRef}
-        className={`morphCard ${open ? "morphCardExpanded" : "morphCardCollapsed"}`}
+        className={`morphCard ${
+          open ? "morphCardExpanded" : "morphCardCollapsed"
+        }`}
         role="dialog"
         aria-modal="true"
         aria-hidden={!open}
         style={{ pointerEvents: open ? "auto" : "none" }}
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
       >
-        <div className="morphFace">{collapsedContent}</div>
+        {!open ? (
+          <div className="morphFace morphFaceShow">{collapsedContent}</div>
+        ) : null}
 
         <div className={`morphInner ${open ? "morphInnerOpen" : ""}`}>
-          <div className="morphHeader">
+          <div ref={headerRef} className="morphHeader">
             <div>
               <div className="morphTitle">{title}</div>
               {subtitle ? <div className="morphSub">{subtitle}</div> : null}
             </div>
-
-            {/* ONLY close trigger */}
-            <button
-              type="button"
-              className="morphCloseBtn"
-              onClick={onClose}
-              aria-label="Close"
-              title="Close"
-            >
-              ✕
-            </button>
           </div>
 
-          <div className="morphBody">{children}</div>
+          <div ref={bodyRef} className="morphBody">
+            {children}
+          </div>
         </div>
       </div>
     </>

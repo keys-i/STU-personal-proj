@@ -95,13 +95,23 @@
 
 /* Reusable icon button */
 .usersView .iconBtn {
+    width: 96px;
+    min-width: 96px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     border: 1px solid var(--chip-border);
     background: var(--chip);
     padding: 10px 12px;
     border-radius: 10px;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.usersView .iconBtn span {
+    display: inline-flex;
+    align-items: center;
 }
 
 .usersView .iconBtn svg {
@@ -132,7 +142,7 @@
 
 .usersView .topbar {
     display: grid;
-    grid-template-columns: 1fr minmax(320px, 620px) 1fr;
+    grid-template-columns: 1fr minmax(360px, 1fr) auto;
     align-items: center;
     gap: 14px;
     margin: 18px 0 14px 0;
@@ -141,6 +151,7 @@
 .usersView .topbarLeft {
     display: flex;
     align-items: center;
+    min-width: 0;
 }
 
 .usersView .topbarRight {
@@ -150,37 +161,45 @@
     align-items: center;
 }
 
+/* Brand: larger + more presence */
 .usersView .brandTitle {
-    font-size: 18px;
-    font-weight: 800;
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 0.2px;
 }
 
 .usersView .brandSub {
     color: var(--muted);
-    font-size: 12px;
+    font-size: 13px;
     margin-top: 4px;
 }
 
 .usersView .topbarCenter {
     width: 100%;
-    max-width: 620px;
+    min-width: 0;
+    max-width: 760px;
     margin: 0 auto;
+
+    /* keep search and NEW on the same row (desktop/tablet) */
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 10px;
     justify-content: center;
-    align-items: stretch;
+    align-items: center;
 }
 
-/* center ThemeToggle when placed inside topbarCenter */
+/* Theme toggle stays inline; don’t force it centered vertically */
 .usersView .topbarCenter .themeToggle {
-    margin: 0 auto;
+    margin: 0;
+    flex: 0 0 auto;
 }
 
 /* Search bar */
 .usersView .searchBar {
     position: relative;
     width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
 }
 
 .usersView .searchBarIcon {
@@ -194,6 +213,7 @@
 
 .usersView .searchBar input {
     width: 100%;
+    min-width: 0;
     padding: 12px 54px 12px 40px;
     border-radius: 999px;
     border: 1px solid var(--border);
@@ -363,10 +383,14 @@
 
 .usersView .emptyState {
     position: relative;
-    padding: 28px 16px 30px 16px;
+
+    /* Responsive “big enough”: scales with viewport width */
+    width: min(980px, 100%);
+    margin: 14px auto 0 auto;
+
+    padding: clamp(18px, 3.6vw, 34px) clamp(14px, 3vw, 28px);
     border: 1px dashed var(--border);
     border-radius: 14px;
-    margin-top: 14px;
     text-align: center;
 }
 
@@ -391,14 +415,14 @@
 }
 
 .usersView .emptyFace {
-    font-size: 44px;
+    font-size: clamp(38px, 7vw, 54px);
     font-weight: 900;
     letter-spacing: 1px;
     margin-bottom: 10px;
 }
 
 .usersView .emptyTitle {
-    font-size: 18px;
+    font-size: clamp(16px, 2.2vw, 20px);
     font-weight: 800;
     margin-top: 0;
 }
@@ -406,6 +430,7 @@
 .usersView .emptySub {
     color: var(--muted);
     margin-top: 8px;
+    font-size: clamp(13px, 1.8vw, 15px);
 }
 
 /* Fullscreen arrow overlay */
@@ -577,7 +602,7 @@
 
     opacity: 0;
     transform: translate(0, -8px) scale(0.94);
-    transform-origin: 0% 100%; /* expand from bottom-left */
+    transform-origin: 0% 100%;
     pointer-events: none;
 
     transition:
@@ -593,17 +618,13 @@
     left: 0;
 }
 
-/* Open: expand FROM the anchor corner */
+/* Open */
 .usersView .floatingMenuOpen {
     opacity: 1;
     pointer-events: auto;
     transform: translate(0, 0) scale(1);
 }
 
-/* Open origin:
-   - left aligned: top-left (lines up with button bottom-left)
-   - right aligned: top-right (lines up with button bottom-right)
-*/
 .usersView .floatingMenuLeft.floatingMenuOpen {
     transform-origin: 0% 0%;
 }
@@ -611,7 +632,7 @@
     transform-origin: 100% 0%;
 }
 
-/* Closing: collapse toward TOP-RIGHT (your request) */
+/* Closing */
 .usersView .floatingMenuClosing {
     transform-origin: 100% 0%;
     opacity: 0;
@@ -711,14 +732,15 @@
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
 }
 
+/* Face overlay (collapsed button visual) */
 .usersView .morphFace {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    opacity: 1;
-    transition: opacity 160ms var(--ease-swoop);
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms var(--ease-swoop);
 }
 
 .usersView .morphFaceShow {
@@ -728,6 +750,7 @@
 .usersView .morphButtonFace {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     border: 1px solid var(--chip-border);
     background: var(--chip);
@@ -736,13 +759,15 @@
     color: var(--fg);
 }
 
+/* Inner fills card; body owns remaining space */
 .usersView .morphInner {
     height: 100%;
+    display: flex;
+    flex-direction: column;
+
     opacity: 0;
     pointer-events: none;
     transition: opacity 180ms var(--ease-swoop);
-    display: flex;
-    flex-direction: column;
 }
 
 .usersView .morphInnerOpen {
@@ -751,6 +776,7 @@
 }
 
 .usersView .morphHeader {
+    flex: 0 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -770,34 +796,28 @@
     margin-top: 2px;
 }
 
-.usersView .morphCloseBtn {
-    border: 1px solid var(--chip-border);
-    background: var(--chip);
-    color: var(--fg);
-    width: 34px;
-    height: 34px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: transform 160ms var(--ease-swoop);
-}
-
-.usersView .morphCloseBtn:hover {
-    transform: translateY(-1px);
-}
-
+/* Body takes remaining height */
 .usersView .morphBody {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 12px;
     overflow: auto;
 }
 
-/* Responsive */
+/* ---------------------------
+   Responsive rules
+---------------------------- */
+
+/* <= 900px: stack layout but keep topbar usable */
 @media (max-width: 900px) {
     .usersView .topbar {
         grid-template-columns: 1fr;
         gap: 12px;
+    }
+
+    .usersView .topbarCenter {
+        max-width: 100%;
+        justify-content: center;
     }
 
     .usersView .topbarRight {
@@ -817,5 +837,46 @@
 
     .usersView .filtersAdvanced {
         grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* <= 520px: wrap toggle + search, make NEW full-width if needed */
+@media (max-width: 520px) {
+    .usersView .topbarCenter {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .usersView .topbarCenter .themeToggle {
+        order: 0;
+    }
+
+    .usersView .searchBar {
+        order: 1;
+        flex: 1 1 100%;
+    }
+
+    .usersView .iconBtn {
+        width: 100%;
+        max-width: 240px;
+    }
+
+    .usersView .topbarRight {
+        width: 100%;
+    }
+}
+
+/* <= 360px: reduce paddings slightly */
+@media (max-width: 360px) {
+    .usersView .card {
+        padding: 14px;
+    }
+
+    .usersView .searchBar input {
+        padding: 11px 50px 11px 38px;
+    }
+
+    .usersView .iconBtn {
+        max-width: 100%;
     }
 }

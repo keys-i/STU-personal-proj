@@ -1,310 +1,202 @@
-/* src/App.css
-   App-scoped styles:
-   - CSS vars + theming
-   - base html/body background
-   - Home (minecraft-ish spellbook) only
+/* src/App.css */
 
-   Shared styles (ThemeToggle + ConfettiBurst + global reset) live in:
-   - src/shared/shared.css
+/* ---------------------------
+   Base + theme variables
+---------------------------- */
 
-   Users feature styles live in:
-   - src/features/users/users.css
-*/
-
+/* Default (light) variables */
 :root {
-    --bg: #ffffff;
-    --fg: #111111;
-    --muted: #666666;
-    --card: #ffffff;
-    --border: #e6e6e6;
-    --chip: #f3f3f3;
-    --chip-border: #dedede;
-    --danger-bg: #ffecec;
-    --danger-border: #f0b2b2;
-    --thead: #fafafa;
-    --row-border: #f0f0f0;
+    color-scheme: light;
 
-    /* unify easing */
-    --ease-swoop: cubic-bezier(0.65, 0.05, 0.36, 1);
+    --bg: #f7f7fb;
+    --fg: #101114;
+    --muted: #5b6470;
+
+    --card: #ffffff;
+    --border: rgba(16, 17, 20, 0.1);
+
+    --chip: rgba(16, 17, 20, 0.05);
+    --chip-border: rgba(16, 17, 20, 0.1);
+
+    --thead: rgba(16, 17, 20, 0.04);
+    --row-border: rgba(16, 17, 20, 0.07);
+
+    --danger-bg: rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.25);
+
+    --focus: rgba(59, 130, 246, 0.45);
+
+    /* easing used in your users.css */
+    --ease-swoop: cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
-:root[data-theme="dark"] {
-    --bg: #0f1115;
-    --fg: #e9edf1;
-    --muted: #a6b0bb;
-    --card: #141823;
-    --border: #232a36;
-    --chip: #1b2230;
-    --chip-border: #2a3443;
-    --danger-bg: #3a1b1b;
-    --danger-border: #6b2a2a;
-    --thead: #101522;
-    --row-border: #212a38;
+/* Prefer system dark if no explicit theme is set */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+        color-scheme: dark;
+
+        --bg: #0b0c10;
+        --fg: #e8eaee;
+        --muted: #a1a7b3;
+
+        --card: #11131a;
+        --border: rgba(232, 234, 238, 0.1);
+
+        --chip: rgba(232, 234, 238, 0.06);
+        --chip-border: rgba(232, 234, 238, 0.1);
+
+        --thead: rgba(232, 234, 238, 0.05);
+        --row-border: rgba(232, 234, 238, 0.08);
+
+        --danger-bg: rgba(248, 113, 113, 0.12);
+        --danger-border: rgba(248, 113, 113, 0.26);
+
+        --focus: rgba(96, 165, 250, 0.55);
+    }
+}
+
+/* Explicit light */
+:root[data-theme="light"],
+body[data-theme="light"] {
+    color-scheme: light;
+
+    --bg: #f7f7fb;
+    --fg: #101114;
+    --muted: #5b6470;
+
+    --card: #ffffff;
+    --border: rgba(16, 17, 20, 0.1);
+
+    --chip: rgba(16, 17, 20, 0.05);
+    --chip-border: rgba(16, 17, 20, 0.1);
+
+    --thead: rgba(16, 17, 20, 0.04);
+    --row-border: rgba(16, 17, 20, 0.07);
+
+    --danger-bg: rgba(220, 38, 38, 0.08);
+    --danger-border: rgba(220, 38, 38, 0.25);
+
+    --focus: rgba(59, 130, 246, 0.45);
+}
+
+/* Explicit dark */
+:root[data-theme="dark"],
+body[data-theme="dark"] {
+    color-scheme: dark;
+
+    --bg: #0b0c10;
+    --fg: #e8eaee;
+    --muted: #a1a7b3;
+
+    --card: #11131a;
+    --border: rgba(232, 234, 238, 0.1);
+
+    --chip: rgba(232, 234, 238, 0.06);
+    --chip-border: rgba(232, 234, 238, 0.1);
+
+    --thead: rgba(232, 234, 238, 0.05);
+    --row-border: rgba(232, 234, 238, 0.08);
+
+    --danger-bg: rgba(248, 113, 113, 0.12);
+    --danger-border: rgba(248, 113, 113, 0.26);
+
+    --focus: rgba(96, 165, 250, 0.55);
+}
+
+/* ---------------------------
+   Global reset-ish
+---------------------------- */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
 }
 
 html,
 body {
+    height: 100%;
+}
+
+body {
     margin: 0;
     background: var(--bg);
     color: var(--fg);
+    font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        Segoe UI,
+        Roboto,
+        Arial,
+        "Apple Color Emoji",
+        "Segoe UI Emoji";
+    line-height: 1.35;
+}
+
+/* A reasonable container used by your UsersView */
+.container {
+    width: min(1080px, 100%);
+    margin: 0 auto;
+    padding: clamp(12px, 2.2vw, 22px);
 }
 
 /* ---------------------------
-   Home: Minecraft-ish spellbook
+   Form + buttons defaults
 ---------------------------- */
 
-.homeWrap {
-    min-height: 100vh;
-    display: grid;
-    grid-template-columns: 1.1fr 1fr;
-    gap: 28px;
-    align-items: center;
-    padding: 34px 18px;
-    max-width: 1100px;
-    margin: 0 auto;
+button,
+input,
+select,
+textarea {
+    font: inherit;
+    color: inherit;
 }
 
-@media (max-width: 900px) {
-    .homeWrap {
-        grid-template-columns: 1fr;
-        gap: 18px;
-        padding-top: 24px;
-    }
-}
-
-.spellStage {
-    display: grid;
-    place-items: center;
-    padding: 20px;
-}
-
-.spellBook {
-    width: min(520px, 92vw);
-    aspect-ratio: 16 / 10;
-    position: relative;
-    perspective: 1200px;
-}
-
-.spellCover,
-.spellPages {
-    position: absolute;
-    inset: 0;
-    border-radius: 18px;
+button {
     border: 1px solid var(--border);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
-    transform-origin: left center;
-}
-
-.spellPages {
-    background: linear-gradient(
-        180deg,
-        rgba(255, 255, 255, 0.95),
-        rgba(255, 255, 255, 0.82)
-    );
-}
-
-:root[data-theme="dark"] .spellPages {
-    background: linear-gradient(
-        180deg,
-        rgba(233, 237, 241, 0.1),
-        rgba(233, 237, 241, 0.06)
-    );
-}
-
-.spellCover {
-    background: linear-gradient(180deg, var(--card), var(--chip));
-    transform: rotateY(0deg);
-    animation: bookOpen 1200ms var(--ease-swoop) forwards;
-}
-
-.spellPages {
-    transform: translateX(10px);
-    overflow: hidden;
-}
-
-.spellPages::before,
-.spellPages::after {
-    content: "";
-    position: absolute;
-    inset: 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-    opacity: 0.9;
-}
-
-:root[data-theme="dark"] .spellPages::before,
-:root[data-theme="dark"] .spellPages::after {
-    border-color: rgba(255, 255, 255, 0.08);
-}
-
-.spellPages::after {
-    inset: 20px 18px;
-    opacity: 0.55;
-}
-
-.spellRune {
-    position: absolute;
-    left: 52%;
-    top: 52%;
-    width: 54%;
-    height: 54%;
-    transform: translate(-50%, -50%);
-    border-radius: 999px;
-    background: radial-gradient(
-        circle at 50% 50%,
-        rgba(255, 255, 255, 0.22),
-        rgba(255, 255, 255, 0) 60%
-    );
-    filter: blur(0.2px);
-    opacity: 0;
-    animation: runeIn 820ms var(--ease-swoop) 780ms forwards;
-}
-
-:root[data-theme="dark"] .spellRune {
-    background: radial-gradient(
-        circle at 50% 50%,
-        rgba(233, 237, 241, 0.18),
-        rgba(233, 237, 241, 0) 60%
-    );
-}
-
-.spellDust {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0;
-    animation: dustIn 420ms var(--ease-swoop) 900ms forwards;
-}
-
-.spellDust::before,
-.spellDust::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(
-            circle at 20% 40%,
-            rgba(255, 255, 255, 0.12),
-            rgba(255, 255, 255, 0) 40%
-        ),
-        radial-gradient(
-            circle at 70% 60%,
-            rgba(255, 255, 255, 0.1),
-            rgba(255, 255, 255, 0) 45%
-        ),
-        radial-gradient(
-            circle at 45% 25%,
-            rgba(255, 255, 255, 0.08),
-            rgba(255, 255, 255, 0) 40%
-        );
-    animation: dustFloat 1600ms ease-in-out infinite;
-}
-
-:root[data-theme="dark"] .spellDust::before,
-:root[data-theme="dark"] .spellDust::after {
-    background:
-        radial-gradient(
-            circle at 20% 40%,
-            rgba(233, 237, 241, 0.1),
-            rgba(233, 237, 241, 0) 40%
-        ),
-        radial-gradient(
-            circle at 70% 60%,
-            rgba(233, 237, 241, 0.08),
-            rgba(233, 237, 241, 0) 45%
-        ),
-        radial-gradient(
-            circle at 45% 25%,
-            rgba(233, 237, 241, 0.06),
-            rgba(233, 237, 241, 0) 40%
-        );
-}
-
-@keyframes bookOpen {
-    0% {
-        transform: rotateY(0deg);
-    }
-    100% {
-        transform: rotateY(-125deg);
-    }
-}
-
-@keyframes runeIn {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(0.96);
-    }
-    100% {
-        opacity: 1;
-        transform: translate(-50%, -50%) scale(1);
-    }
-}
-
-@keyframes dustIn {
-    to {
-        opacity: 1;
-    }
-}
-
-@keyframes dustFloat {
-    0%,
-    100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-6px);
-    }
-}
-
-.homeText {
-    padding: 14px 8px;
-}
-
-.homeKicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--chip-border);
-    background: var(--chip);
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.homeTitle {
-    margin-top: 14px;
-    font-size: 36px;
-    letter-spacing: -0.02em;
-}
-
-.homeSub {
-    margin-top: 10px;
-    color: var(--muted);
-    line-height: 1.5;
-    max-width: 52ch;
-}
-
-.homeActions {
-    margin-top: 18px;
-    display: flex;
-    gap: 10px;
-}
-
-.homeBtn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--chip-border);
     background: var(--chip);
     color: var(--fg);
-    text-decoration: none;
-    font-weight: 800;
 }
 
-.homeBtn:hover {
-    filter: brightness(1.03);
+input,
+select,
+textarea {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--fg);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: color-mix(in srgb, var(--muted) 75%, transparent);
+}
+
+/* Focus ring */
+:where(button, input, select, textarea):focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+}
+
+/* Links */
+a {
+    color: inherit;
+}
+
+/* ---------------------------
+   Scrollbar (nice-to-have)
+---------------------------- */
+
+@supports selector(::-webkit-scrollbar) {
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: color-mix(in srgb, var(--muted) 35%, transparent);
+        border-radius: 999px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
 }
