@@ -19,70 +19,69 @@ export function UsersFilters(props: {
   const v = props.value;
 
   return (
-    <div className="filters">
-      <label>
-        Name
-        <input
-          value={v.name}
-          onChange={(e) => props.onChange({ ...v, name: e.target.value })}
-          placeholder="partial match"
-        />
-      </label>
+    <div className="filtersPanel">
+      <div className="filtersAdvanced">
+        <label>
+          Status
+          <select
+            value={v.status}
+            onChange={(e) =>
+              props.onChange({
+                ...v,
+                status: e.target.value as FilterState["status"],
+              })
+            }
+          >
+            {STATUSES.map((s) => (
+              <option key={s || "any"} value={s}>
+                {s || "(any)"}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <label>
-        Status
-        <select
-          value={v.status}
-          onChange={(e) =>
-            props.onChange({
-              ...v,
-              status: e.target.value as FilterState["status"],
-            })
-          }
-        >
-          {STATUSES.map((s) => (
-            <option key={s || "any"} value={s}>
-              {s || "(any)"}
-            </option>
-          ))}
-        </select>
-      </label>
+        <label>
+          From date
+          <input
+            type="date"
+            value={v.fromDate}
+            onChange={(e) => props.onChange({ ...v, fromDate: e.target.value })}
+          />
+        </label>
 
-      <label>
-        From date
-        <input
-          type="date"
-          value={v.fromDate}
-          onChange={(e) => props.onChange({ ...v, fromDate: e.target.value })}
-        />
-      </label>
+        <label>
+          To date
+          <input
+            type="date"
+            value={v.toDate}
+            onChange={(e) => props.onChange({ ...v, toDate: e.target.value })}
+          />
+        </label>
 
-      <label>
-        To date
-        <input
-          type="date"
-          value={v.toDate}
-          onChange={(e) => props.onChange({ ...v, toDate: e.target.value })}
-        />
-      </label>
+        <label>
+          Limit
+          <select
+            value={props.limit}
+            onChange={(e) => props.onLimitChange(Number(e.target.value))}
+          >
+            {[10, 20, 50, 100].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
 
-      <button type="button" onClick={props.onApply}>
-        Apply
-      </button>
+        <div className="row" style={{ alignSelf: "end" }}>
+          <button type="button" onClick={props.onApply}>
+            Apply
+          </button>
+        </div>
+      </div>
 
-      <label>
-        Limit
-        <select
-          value={props.limit}
-          onChange={(e) => props.onLimitChange(Number(e.target.value))}
-        >
-          {[10, 20, 50, 100].map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div className="muted small">
+        Note: search is at the top. These are the advanced filters.
+      </div>
     </div>
   );
 }
