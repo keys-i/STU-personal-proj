@@ -1,5 +1,5 @@
 /* src/features/users/users.css
-   Users feature UI styles for:
+   Scoped Users feature UI styles for:
    - CreateUserForm
    - CreateUserMorph
    - EditUserModal
@@ -9,21 +9,11 @@
    - UsersTable
 */
 
-/* Users page shell */
-.container {
-    max-width: 1100px;
-    margin: 24px auto;
-    padding: 0 16px;
-    font-family:
-        system-ui,
-        -apple-system,
-        Segoe UI,
-        Roboto,
-        sans-serif;
-}
+/* ---------------------------
+   Shared layout helpers (scoped)
+---------------------------- */
 
-/* Base UI */
-.card {
+.usersView .card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -31,37 +21,37 @@
     margin: 16px 0;
 }
 
-h2 {
+.usersView h2 {
     margin: 0 0 12px 0;
     font-size: 18px;
 }
 
-.sub,
-.muted {
+.usersView .sub,
+.usersView .muted {
     color: var(--muted);
 }
 
-.small {
+.usersView .small {
     font-size: 12px;
 }
 
-.mono {
+.usersView .mono {
     font-family:
         ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
-.row {
+.usersView .row {
     display: flex;
     gap: 10px;
     align-items: center;
 }
 
-.space-between {
+.usersView .space-between {
     justify-content: space-between;
 }
 
 /* Inputs */
-label {
+.usersView label {
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -69,8 +59,8 @@ label {
     color: var(--fg);
 }
 
-input,
-select {
+.usersView input,
+.usersView select {
     padding: 10px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -80,7 +70,7 @@ select {
 }
 
 /* Buttons */
-button {
+.usersView button {
     padding: 10px 12px;
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -89,22 +79,22 @@ button {
     cursor: pointer;
 }
 
-button:disabled {
+.usersView button:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
 
-button.danger {
+.usersView button.danger {
     border-color: var(--danger-border);
     background: var(--danger-bg);
 }
 
-.chip {
+.usersView .chip {
     border-color: var(--chip-border);
 }
 
 /* Reusable icon button */
-.iconBtn {
+.usersView .iconBtn {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -114,19 +104,19 @@ button.danger {
     border-radius: 10px;
 }
 
-.iconBtn svg {
+.usersView .iconBtn svg {
     display: block;
 }
 
-.iconBtnActive {
+.usersView .iconBtnActive {
     outline: 2px solid var(--chip-border);
 }
 
-.iconBtnPulse {
-    animation: pulse 1.4s ease-in-out infinite;
+.usersView .iconBtnPulse {
+    animation: usersPulse 1.4s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes usersPulse {
     0%,
     100% {
         transform: translateY(0);
@@ -136,8 +126,11 @@ button.danger {
     }
 }
 
-/* Topbar */
-.topbar {
+/* ---------------------------
+   Users Topbar + Search
+---------------------------- */
+
+.usersView .topbar {
     display: grid;
     grid-template-columns: 1fr minmax(320px, 620px) 1fr;
     align-items: center;
@@ -145,31 +138,30 @@ button.danger {
     margin: 18px 0 14px 0;
 }
 
-.topbarLeft {
+.usersView .topbarLeft {
     display: flex;
     align-items: center;
 }
 
-.topbarRight {
+.usersView .topbarRight {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
     align-items: center;
 }
 
-.brandTitle {
+.usersView .brandTitle {
     font-size: 18px;
     font-weight: 800;
 }
 
-.brandSub {
+.usersView .brandSub {
     color: var(--muted);
     font-size: 12px;
     margin-top: 4px;
 }
 
-/* Center stack */
-.topbarCenter {
+.usersView .topbarCenter {
     width: 100%;
     max-width: 620px;
     margin: 0 auto;
@@ -180,18 +172,18 @@ button.danger {
     align-items: stretch;
 }
 
-/* If you mount ThemeToggle in the center, keep it centered */
-.topbarCenter .themeToggle {
+/* center ThemeToggle when placed inside topbarCenter */
+.usersView .topbarCenter .themeToggle {
     margin: 0 auto;
 }
 
 /* Search bar */
-.searchBar {
+.usersView .searchBar {
     position: relative;
     width: 100%;
 }
 
-.searchBarIcon {
+.usersView .searchBarIcon {
     position: absolute;
     left: 12px;
     top: 50%;
@@ -200,7 +192,7 @@ button.danger {
     pointer-events: none;
 }
 
-.searchBar input {
+.usersView .searchBar input {
     width: 100%;
     padding: 12px 54px 12px 40px;
     border-radius: 999px;
@@ -210,7 +202,7 @@ button.danger {
 }
 
 /* Filters icon inside search */
-.searchBarBtn {
+.usersView .searchBarBtn {
     position: absolute;
     right: 8px;
     top: 50%;
@@ -226,60 +218,69 @@ button.danger {
     justify-content: center;
 }
 
-.searchBarBtnActive {
+.usersView .searchBarBtnActive {
     outline: 2px solid var(--chip-border);
 }
 
-/* Table */
-.table {
+/* ---------------------------
+   Users Table
+---------------------------- */
+
+.usersView .table {
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
 }
 
-.thead,
-.trow {
+.usersView .thead,
+.usersView .trow {
     display: grid;
     grid-template-columns: 120px 1fr 1.4fr 0.8fr 0.8fr 1.1fr;
     gap: 10px;
     padding: 10px 12px;
 }
 
-.thead {
+.usersView .thead {
     background: var(--thead);
     font-weight: 700;
     font-size: 12px;
 }
 
-.trow {
+.usersView .trow {
     border-top: 1px solid var(--row-border);
     font-size: 14px;
 }
 
-.trow:hover {
+.usersView .trow:hover {
     filter: brightness(1.03);
 }
 
-.empty {
+.usersView .empty {
     padding: 14px;
     color: var(--muted);
 }
 
-/* Filters */
-.filtersPanel {
+/* ---------------------------
+   Users Filters
+---------------------------- */
+
+.usersView .filtersPanel {
     display: grid;
     gap: 12px;
 }
 
-.filtersAdvanced {
+.usersView .filtersAdvanced {
     display: grid;
     grid-template-columns: 1.4fr 1fr 1fr 140px auto;
     gap: 12px;
     align-items: end;
 }
 
-/* Errors */
-.error {
+/* ---------------------------
+   Errors
+---------------------------- */
+
+.usersView .error {
     background: var(--danger-bg);
     border: 1px solid var(--danger-border);
     padding: 10px 12px;
@@ -287,8 +288,11 @@ button.danger {
     margin: 12px 0;
 }
 
-/* Thought bubble */
-.thoughtBubble {
+/* ---------------------------
+   Thought bubble
+---------------------------- */
+
+.usersView .thoughtBubble {
     position: relative;
     margin: 14px 0 10px 0;
     display: flex;
@@ -296,7 +300,7 @@ button.danger {
     pointer-events: none;
 }
 
-.thoughtBubbleText {
+.usersView .thoughtBubbleText {
     background: var(--chip);
     border: 1px solid var(--chip-border);
     padding: 10px 14px;
@@ -306,7 +310,7 @@ button.danger {
     position: relative;
 }
 
-.thoughtBubbleText::after {
+.usersView .thoughtBubbleText::after {
     content: "";
     position: absolute;
     left: 18px;
@@ -319,8 +323,11 @@ button.danger {
     transform: rotate(45deg);
 }
 
-/* Modal */
-.modalBackdrop {
+/* ---------------------------
+   EditUserModal
+---------------------------- */
+
+.usersView .modalBackdrop {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
@@ -330,7 +337,7 @@ button.danger {
     z-index: 90;
 }
 
-.modal {
+.usersView .modal {
     width: min(720px, 100%);
     background: var(--card);
     border-radius: 14px;
@@ -338,8 +345,8 @@ button.danger {
     border: 1px solid var(--border);
 }
 
-/* A11y */
-.srOnly {
+/* A11y helper */
+.usersView .srOnly {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -350,8 +357,11 @@ button.danger {
     border: 0;
 }
 
-/* Empty state */
-.emptyState {
+/* ---------------------------
+   EmptyUsersState
+---------------------------- */
+
+.usersView .emptyState {
     position: relative;
     padding: 28px 16px 30px 16px;
     border: 1px dashed var(--border);
@@ -360,12 +370,12 @@ button.danger {
     text-align: center;
 }
 
-.emptyStatePop {
+.usersView .emptyStatePop {
     pointer-events: none;
-    animation: emptyFadeOut 420ms ease forwards;
+    animation: usersEmptyFadeOut 420ms ease forwards;
 }
 
-@keyframes emptyFadeOut {
+@keyframes usersEmptyFadeOut {
     0% {
         opacity: 1;
         transform: scale(1);
@@ -380,26 +390,26 @@ button.danger {
     }
 }
 
-.emptyFace {
+.usersView .emptyFace {
     font-size: 44px;
     font-weight: 900;
     letter-spacing: 1px;
     margin-bottom: 10px;
 }
 
-.emptyTitle {
+.usersView .emptyTitle {
     font-size: 18px;
     font-weight: 800;
     margin-top: 0;
 }
 
-.emptySub {
+.usersView .emptySub {
     color: var(--muted);
     margin-top: 8px;
 }
 
 /* Fullscreen arrow overlay */
-.emptyArrowOverlay {
+.usersView .emptyArrowOverlay {
     position: fixed;
     inset: 0;
     pointer-events: none;
@@ -407,15 +417,14 @@ button.danger {
     color: var(--muted);
 }
 
-/* Wrapper group: wobble moves BOTH shaft + head */
-.emptyArrowGroup {
+/* Wobble group */
+.usersView .emptyArrowGroup {
     transform-origin: center;
-    animation: arrowWobble 1.35s ease-in-out 620ms infinite;
+    animation: usersArrowWobble 1.35s ease-in-out 620ms infinite;
 }
 
-/* Shared stroke style */
-.emptyArrowShaft,
-.emptyArrowHead {
+.usersView .emptyArrowShaft,
+.usersView .emptyArrowHead {
     fill: none;
     stroke: currentColor;
     stroke-width: 3.1;
@@ -425,37 +434,35 @@ button.danger {
     filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
 }
 
-/* Shaft draws first */
-.emptyArrowShaftDraw {
+.usersView .emptyArrowShaftDraw {
     stroke-dasharray: var(--dash);
     stroke-dashoffset: var(--dash);
-    animation: arrowDraw 620ms var(--ease-swoop) forwards;
+    animation: usersArrowDraw 620ms var(--ease-swoop) forwards;
 }
 
-/* Head draws AFTER shaft */
-.emptyArrowHeadDraw {
+.usersView .emptyArrowHeadDraw {
     stroke-dasharray: var(--dash);
     stroke-dashoffset: var(--dash);
     opacity: 0.95;
     animation:
-        headDraw 220ms var(--ease-swoop) forwards,
-        headIn 220ms var(--ease-swoop) forwards;
+        usersHeadDraw 220ms var(--ease-swoop) forwards,
+        usersHeadIn 220ms var(--ease-swoop) forwards;
     animation-delay: 620ms, 620ms;
 }
 
-@keyframes arrowDraw {
+@keyframes usersArrowDraw {
     to {
         stroke-dashoffset: 0;
     }
 }
 
-@keyframes headDraw {
+@keyframes usersHeadDraw {
     to {
         stroke-dashoffset: 0;
     }
 }
 
-@keyframes headIn {
+@keyframes usersHeadIn {
     0% {
         opacity: 0;
         transform: scale(0.96);
@@ -467,8 +474,7 @@ button.danger {
     }
 }
 
-/* scribbly wobble */
-@keyframes arrowWobble {
+@keyframes usersArrowWobble {
     0%,
     100% {
         transform: translate(0, 0) rotate(0deg);
@@ -484,19 +490,18 @@ button.danger {
     }
 }
 
-/* Pop when first user appears */
-.emptyArrowPop .emptyArrowGroup {
+.usersView .emptyArrowPop .emptyArrowGroup {
     animation:
-        arrowPop 420ms var(--ease-swoop),
-        arrowWobble 1.35s ease-in-out infinite;
+        usersArrowPop 420ms var(--ease-swoop),
+        usersArrowWobble 1.35s ease-in-out infinite;
 }
 
-.emptyArrowPop .emptyArrowShaft,
-.emptyArrowPop .emptyArrowHead {
-    animation: arrowPopStroke 420ms var(--ease-swoop);
+.usersView .emptyArrowPop .emptyArrowShaft,
+.usersView .emptyArrowPop .emptyArrowHead {
+    animation: usersArrowPopStroke 420ms var(--ease-swoop);
 }
 
-@keyframes arrowPop {
+@keyframes usersArrowPop {
     0% {
         transform: scale(1);
     }
@@ -508,7 +513,7 @@ button.danger {
     }
 }
 
-@keyframes arrowPopStroke {
+@keyframes usersArrowPopStroke {
     0% {
         opacity: 0.75;
         stroke-width: 3.1;
@@ -525,16 +530,16 @@ button.danger {
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-    .iconBtnPulse,
-    .emptyArrowGroup,
-    .emptyArrowShaftDraw,
-    .emptyArrowHeadDraw,
-    .emptyArrowPop .emptyArrowGroup {
+    .usersView .iconBtnPulse,
+    .usersView .emptyArrowGroup,
+    .usersView .emptyArrowShaftDraw,
+    .usersView .emptyArrowHeadDraw,
+    .usersView .emptyArrowPop .emptyArrowGroup {
         animation: none !important;
     }
 
-    .emptyArrowShaftDraw,
-    .emptyArrowHeadDraw {
+    .usersView .emptyArrowShaftDraw,
+    .usersView .emptyArrowHeadDraw {
         stroke-dasharray: 0 !important;
         stroke-dashoffset: 0 !important;
         opacity: 1 !important;
@@ -543,19 +548,22 @@ button.danger {
 
 /* ---------------------------
    NewFloatingMenu
-   (expands from bottom-left, collapses to top-right)
+   (opens from NEW button area, collapses to top-right)
 ---------------------------- */
 
-.newMenuWrap {
+/* Put button + menu under this wrapper */
+.usersView .newMenuWrap {
     position: relative;
     display: inline-flex;
 }
 
-.menuAnchor {
+/* keep this wrapper from affecting layout */
+.usersView .menuAnchor {
     display: contents;
 }
 
-.floatingMenu {
+/* Menu base */
+.usersView .floatingMenu {
     position: absolute;
     top: calc(100% + 10px);
     min-width: 210px;
@@ -569,8 +577,7 @@ button.danger {
 
     opacity: 0;
     transform: translate(0, -8px) scale(0.94);
-
-    transform-origin: 0% 100%;
+    transform-origin: 0% 100%; /* expand from bottom-left */
     pointer-events: none;
 
     transition:
@@ -578,28 +585,45 @@ button.danger {
         opacity 180ms var(--ease-swoop);
 }
 
-.floatingMenuRight {
+/* Alignment */
+.usersView .floatingMenuRight {
     right: 0;
 }
-
-.floatingMenuLeft {
+.usersView .floatingMenuLeft {
     left: 0;
 }
 
-.floatingMenuOpen {
+/* Open: expand FROM the anchor corner */
+.usersView .floatingMenuOpen {
     opacity: 1;
-    transform: translate(0, 0) scale(1);
     pointer-events: auto;
+    transform: translate(0, 0) scale(1);
 }
 
-.floatingMenuClosing {
+/* Open origin:
+   - left aligned: top-left (lines up with button bottom-left)
+   - right aligned: top-right (lines up with button bottom-right)
+*/
+.usersView .floatingMenuLeft.floatingMenuOpen {
+    transform-origin: 0% 0%;
+}
+.usersView .floatingMenuRight.floatingMenuOpen {
+    transform-origin: 100% 0%;
+}
+
+/* Closing: collapse toward TOP-RIGHT (your request) */
+.usersView .floatingMenuClosing {
     transform-origin: 100% 0%;
     opacity: 0;
-    transform: translate(10px, -12px) scale(0.92);
     pointer-events: none;
+    transform: translate(10px, -14px) scale(0.78);
+    transition:
+        transform 200ms var(--ease-swoop),
+        opacity 120ms var(--ease-swoop);
 }
 
-.menuItem {
+/* Items */
+.usersView .menuItem {
     width: 100%;
     display: grid;
     grid-template-columns: 18px 1fr;
@@ -616,23 +640,23 @@ button.danger {
     text-align: left;
 }
 
-.menuItem:hover {
+.usersView .menuItem:hover {
     background: var(--chip);
     border-color: var(--chip-border);
 }
 
-.menuItemIcon {
+.usersView .menuItemIcon {
     display: grid;
     place-items: center;
     color: var(--muted);
 }
 
-.menuItemDanger:hover {
+.usersView .menuItemDanger:hover {
     background: var(--danger-bg);
     border-color: var(--danger-border);
 }
 
-.menuItemLabel {
+.usersView .menuItemLabel {
     font-weight: 700;
 }
 
@@ -640,7 +664,7 @@ button.danger {
    CreateUserMorph
 ---------------------------- */
 
-.morphBackdrop {
+.usersView .morphBackdrop {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0);
@@ -649,12 +673,12 @@ button.danger {
     z-index: 70;
 }
 
-.morphBackdropOpen {
+.usersView .morphBackdropOpen {
     background: rgba(0, 0, 0, 0.45);
     pointer-events: auto;
 }
 
-.morphCard {
+.usersView .morphCard {
     position: fixed;
     left: var(--x, 0px);
     top: var(--y, 0px);
@@ -675,33 +699,33 @@ button.danger {
         border-color 220ms var(--ease-swoop);
 }
 
-.morphCardCollapsed {
+.usersView .morphCardCollapsed {
     background: var(--chip);
     border: 1px solid var(--chip-border);
     box-shadow: none;
 }
 
-.morphCardExpanded {
+.usersView .morphCardExpanded {
     background: var(--card);
     border: 1px solid var(--border);
     box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
 }
 
-.morphFace {
+.usersView .morphFace {
     position: absolute;
     inset: 0;
     display: grid;
     place-items: center;
-    opacity: 0;
+    opacity: 1;
     transition: opacity 160ms var(--ease-swoop);
     pointer-events: none;
 }
 
-.morphFaceShow {
+.usersView .morphFaceShow {
     opacity: 1;
 }
 
-.morphButtonFace {
+.usersView .morphButtonFace {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -712,7 +736,7 @@ button.danger {
     color: var(--fg);
 }
 
-.morphInner {
+.usersView .morphInner {
     height: 100%;
     opacity: 0;
     pointer-events: none;
@@ -721,12 +745,12 @@ button.danger {
     flex-direction: column;
 }
 
-.morphInnerOpen {
+.usersView .morphInnerOpen {
     opacity: 1;
     pointer-events: auto;
 }
 
-.morphHeader {
+.usersView .morphHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -735,18 +759,18 @@ button.danger {
     border-bottom: 1px solid var(--border);
 }
 
-.morphTitle {
+.usersView .morphTitle {
     font-size: 14px;
     font-weight: 800;
 }
 
-.morphSub {
+.usersView .morphSub {
     font-size: 12px;
     color: var(--muted);
     margin-top: 2px;
 }
 
-.morphCloseBtn {
+.usersView .morphCloseBtn {
     border: 1px solid var(--chip-border);
     background: var(--chip);
     color: var(--fg);
@@ -760,38 +784,38 @@ button.danger {
     transition: transform 160ms var(--ease-swoop);
 }
 
-.morphCloseBtn:hover {
+.usersView .morphCloseBtn:hover {
     transform: translateY(-1px);
 }
 
-.morphBody {
+.usersView .morphBody {
     padding: 12px;
     overflow: auto;
 }
 
 /* Responsive */
 @media (max-width: 900px) {
-    .topbar {
+    .usersView .topbar {
         grid-template-columns: 1fr;
         gap: 12px;
     }
 
-    .topbarRight {
+    .usersView .topbarRight {
         justify-content: flex-start;
         flex-wrap: wrap;
     }
 
-    .thead,
-    .trow {
+    .usersView .thead,
+    .usersView .trow {
         grid-template-columns: 100px 1fr 1fr;
     }
 
-    .thead div:nth-child(n + 4),
-    .trow div:nth-child(n + 4) {
+    .usersView .thead div:nth-child(n + 4),
+    .usersView .trow div:nth-child(n + 4) {
         display: none;
     }
 
-    .filtersAdvanced {
+    .usersView .filtersAdvanced {
         grid-template-columns: 1fr 1fr;
     }
 }

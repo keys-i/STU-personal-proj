@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { User } from "../types";
 
 type Props = {
@@ -12,16 +12,26 @@ type Props = {
   onDelete: (id: string) => void;
 };
 
-function clamp(n: number, lo: number, hi: number) {
+function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
-function formatDate(iso?: string | null) {
+const dateFmt = new Intl.DateTimeFormat(undefined, {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+function formatDate(iso?: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString();
+  return dateFmt.format(d);
 }
+
+type WithCreatedAt = { createdAt?: string | null };
 
 export function UsersTable({
   users,
@@ -31,11 +41,13 @@ export function UsersTable({
   onEdit,
   onDelete,
 }: Props) {
-  // local draft so user can type without immediately firing refresh
-  const [limitDraft, setLimitDraft] = useState(String(limit));
-  useEffect(() => setLimitDraft(String(limit)), [limit]);
-
   const shownCount = users.length;
+
+  // Draft is only “active” while the input is focused/being edited
+  const [editingLimit, setEditingLimit] = useState(false);
+  const [limitDraft, setLimitDraft] = useState<string>("");
+
+  const inputValue = editingLimit ? limitDraft : String(limit);
 
   const columns = useMemo(
     () => [
@@ -50,20 +62,28 @@ export function UsersTable({
     [],
   );
 
-  function commitLimit() {
+  function commitLimit(): void {
     const raw = Number(limitDraft);
+
     if (!Number.isFinite(raw)) {
+      // revert
       setLimitDraft(String(limit));
       return;
     }
+
     const safe = clamp(Math.trunc(raw), 1, 100);
-    setLimitDraft(String(safe));
     if (safe !== limit) onLimitChange(safe);
+    setLimitDraft(""); // clear draft; render goes back to prop
+    setEditingLimit(false);
+  }
+
+  function cancelLimit(): void {
+    setLimitDraft("");
+    setEditingLimit(false);
   }
 
   return (
     <div>
-      {/* Header row inside the table card */}
       <div className="row space-between" style={{ marginBottom: 12 }}>
         <div className="muted small">
           Showing <strong>{shownCount}</strong>
@@ -77,12 +97,21 @@ export function UsersTable({
             type="number"
             min={1}
             max={100}
-            value={limitDraft}
-            onChange={(e) => setLimitDraft(e.target.value)}
-            onBlur={commitLimit}
+            value={inputValue}
+            onFocus={() => {
+              setEditingLimit(true);
+              setLimitDraft(String(limit));
+            }}
+            onChange={(e) => {
+              setEditingLimit(true);
+              setLimitDraft(e.target.value);
+            }}
+            onBlur={() => {
+              if (editingLimit) commitLimit();
+            }}
             onKeyDown={(e) => {
               if (e.key === "Enter") commitLimit();
-              if (e.key === "Escape") setLimitDraft(String(limit));
+              if (e.key === "Escape") cancelLimit();
             }}
             style={{ width: 92 }}
             aria-label="Users per page limit"
@@ -103,45 +132,49 @@ export function UsersTable({
         {users.length === 0 ? (
           <div className="empty">No users.</div>
         ) : (
-          users.map((u) => (
-            <div className="trow" role="row" key={u.id}>
-              <div role="cell" className="mono small" title={u.id}>
-                {u.id}
-              </div>
+          users.map((u) => {
+            const createdAt = (u as WithCreatedAt).createdAt;
 
-              <div role="cell">{u.name}</div>
+            return (
+              <div className="trow" role="row" key={u.id}>
+                <div role="cell" className="mono small" title={u.id}>
+                  {u.id}
+                </div>
 
-              <div role="cell" title={u.email}>
-                {u.email}
-              </div>
+                <div role="cell">{u.name}</div>
 
-              <div role="cell">{u.status}</div>
+                <div role="cell" title={u.email}>
+                  {u.email}
+                </div>
 
-              <div role="cell">{u.role ?? "—"}</div>
+                <div role="cell">{u.status}</div>
 
-              <div role="cell" className="small muted">
-                {formatDate((u as unknown as { createdAt?: string }).createdAt)}
-              </div>
+                <div role="cell">{u.role ?? "—"}</div>
 
-              <div role="cell">
-                <div
-                  className="row"
-                  style={{ gap: 8, justifyContent: "flex-end" }}
-                >
-                  <button type="button" onClick={() => onEdit(u)}>
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="danger"
-                    onClick={() => onDelete(u.id)}
+                <div role="cell" className="small muted">
+                  {formatDate(createdAt)}
+                </div>
+
+                <div role="cell">
+                  <div
+                    className="row"
+                    style={{ gap: 8, justifyContent: "flex-end" }}
                   >
-                    Delete
-                  </button>
+                    <button type="button" onClick={() => onEdit(u)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="danger"
+                      onClick={() => onDelete(u.id)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

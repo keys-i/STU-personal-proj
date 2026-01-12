@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 type Rect = { left: number; top: number; width: number; height: number };
 
@@ -13,18 +13,15 @@ function getRect(el: HTMLElement): Rect {
 
 type Props = {
   open: boolean;
-  anchorRef: React.RefObject<HTMLElement>;
+  anchorRef: React.RefObject<HTMLElement | null>;
   onClose: () => void;
-
-  // what the morph looks like when "closed" (should match the button)
   collapsedContent: React.ReactNode;
-
-  // what the morph shows when fully open (your create form)
   children: React.ReactNode;
-
   title: string;
   subtitle?: string;
 };
+
+const CLOSE_MS = 220;
 
 export function CreateUserMorph({
   open,
@@ -35,15 +32,12 @@ export function CreateUserMorph({
   title,
   subtitle,
 }: Props) {
-  const [mounted, setMounted] = useState(false);
-  const [phase, setPhase] = useState<"closed" | "opening" | "open" | "closing">(
-    "closed",
-  );
-
-  const fromRectRef = useRef<Rect | null>(null);
-  const toRectRef = useRef<Rect | null>(null);
-
   const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const rafRef = useRef<number>(0);
+  const tokenRef = useRef(0);
+
+  const showTimerRef = useRef<number | null>(null);
 
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -52,11 +46,7 @@ export function CreateUserMorph({
     );
   }, []);
 
-  const computeToRect = () => {
-    const anchor = anchorRef.current;
-    if (!anchor) return null;
-
-    const from = getRect(anchor);
+  const computeToRect = (from: Rect): Rect => {
     const pad = 16;
     const gap = 10;
 
@@ -65,7 +55,6 @@ export function CreateUserMorph({
 
     const targetW = Math.min(540, vw - pad * 2);
 
-    // align right edge with button’s right edge (feels like it “unfolds” from it)
     const left = clamp(
       from.left + from.width - targetW,
       pad,
@@ -74,7 +63,6 @@ export function CreateUserMorph({
 
     const maxHBelow = vh - (from.top + from.height + gap) - pad;
     const maxHAbove = from.top - gap - pad;
-
     const openBelow = maxHBelow >= 320 || maxHBelow >= maxHAbove;
 
     const top = openBelow
@@ -90,120 +78,96 @@ export function CreateUserMorph({
     return { left, top, width: targetW, height };
   };
 
-  // Hide the real anchor button while the morph is visible
+  const applyRectVars = (rect: Rect, radiusPx: number) => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    card.style.setProperty("--x", `${rect.left}px`);
+    card.style.setProperty("--y", `${rect.top}px`);
+    card.style.setProperty("--w", `${rect.width}px`);
+    card.style.setProperty("--h", `${rect.height}px`);
+    card.style.setProperty("--r", `${radiusPx}px`);
+  };
+
+  // Hide anchor while open, show it back after close animation completes
   useEffect(() => {
-    const anchor = anchorRef.current as HTMLElement | null;
-    if (!anchor) return;
-
-    if (mounted) {
-      // keep layout; just hide visuals + disable interaction
-      anchor.style.opacity = "0";
-      anchor.style.pointerEvents = "none";
-    } else {
-      anchor.style.opacity = "";
-      anchor.style.pointerEvents = "";
-    }
-
-    return () => {
-      anchor.style.opacity = "";
-      anchor.style.pointerEvents = "";
-    };
-  }, [mounted, anchorRef]);
-
-  // Mount + opening animation
-  useLayoutEffect(() => {
-    if (!open) return;
-
     const anchor = anchorRef.current;
     if (!anchor) return;
 
-    const from = getRect(anchor);
-    const to = computeToRect();
-    if (!to) return;
+    if (showTimerRef.current) window.clearTimeout(showTimerRef.current);
 
-    fromRectRef.current = from;
-    toRectRef.current = to;
+    const hideAnchor = () => {
+      anchor.style.opacity = "0";
+      anchor.style.pointerEvents = "none";
+    };
 
-    setMounted(true);
-    setPhase("opening");
+    const showAnchor = () => {
+      anchor.style.opacity = "";
+      anchor.style.pointerEvents = "";
+    };
 
-    requestAnimationFrame(() => {
-      const card = cardRef.current;
-      if (!card) return;
-
-      // Start exactly at button position/size
-      card.style.setProperty("--x", `${from.left}px`);
-      card.style.setProperty("--y", `${from.top}px`);
-      card.style.setProperty("--w", `${from.width}px`);
-      card.style.setProperty("--h", `${from.height}px`);
-      card.style.setProperty("--r", `10px`);
-
-      // Next frame: expand to floating window
-      requestAnimationFrame(() => {
-        card.style.setProperty("--x", `${to.left}px`);
-        card.style.setProperty("--y", `${to.top}px`);
-        card.style.setProperty("--w", `${to.width}px`);
-        card.style.setProperty("--h", `${to.height}px`);
-        card.style.setProperty("--r", `14px`);
-
-        if (prefersReducedMotion) setPhase("open");
-      });
-    });
-  }, [open, anchorRef, prefersReducedMotion]);
-
-  // Close animation when `open` becomes false
-  useEffect(() => {
-    if (open) return;
-    if (!mounted) return;
-
-    const from = fromRectRef.current;
-    const card = cardRef.current;
-
-    if (!from || !card) {
-      setMounted(false);
-      setPhase("closed");
-      return;
+    if (open) {
+      hideAnchor();
+    } else {
+      // keep hidden until the card finishes collapsing
+      hideAnchor();
+      showTimerRef.current = window.setTimeout(
+        () => {
+          showAnchor();
+          showTimerRef.current = null;
+        },
+        prefersReducedMotion ? 0 : CLOSE_MS,
+      );
     }
 
-    setPhase("closing");
+    return () => {
+      if (showTimerRef.current) window.clearTimeout(showTimerRef.current);
+      showAnchor();
+    };
+  }, [open, anchorRef, prefersReducedMotion]);
 
-    requestAnimationFrame(() => {
-      card.style.setProperty("--x", `${from.left}px`);
-      card.style.setProperty("--y", `${from.top}px`);
-      card.style.setProperty("--w", `${from.width}px`);
-      card.style.setProperty("--h", `${from.height}px`);
-      card.style.setProperty("--r", `10px`);
+  // OPEN/CLOSE positioning + morph via CSS vars
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const card = cardRef.current;
+    if (!anchor || !card) return;
 
-      if (prefersReducedMotion) {
-        setMounted(false);
-        setPhase("closed");
-      }
-    });
-  }, [open, mounted, prefersReducedMotion]);
+    tokenRef.current += 1;
+    const token = tokenRef.current;
 
-  // Keep correct position on resize/scroll while open
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+    const from = getRect(anchor);
+
+    if (open) {
+      const to = computeToRect(from);
+
+      applyRectVars(from, 10);
+
+      rafRef.current = requestAnimationFrame(() => {
+        if (token !== tokenRef.current) return;
+        applyRectVars(to, 14);
+      });
+    } else {
+      applyRectVars(from, 10);
+    }
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [open, anchorRef]);
+
+  // Keep aligned on resize/scroll while open
   useEffect(() => {
-    if (!mounted) return;
+    if (!open) return;
 
     const onReflow = () => {
       const anchor = anchorRef.current;
-      const card = cardRef.current;
-      if (!anchor || !card) return;
+      if (!anchor) return;
 
       const from = getRect(anchor);
-      fromRectRef.current = from;
-
-      const to = computeToRect();
-      if (!to) return;
-      toRectRef.current = to;
-
-      if (phase === "open") {
-        card.style.setProperty("--x", `${to.left}px`);
-        card.style.setProperty("--y", `${to.top}px`);
-        card.style.setProperty("--w", `${to.width}px`);
-        card.style.setProperty("--h", `${to.height}px`);
-        card.style.setProperty("--r", `14px`);
-      }
+      const to = computeToRect(from);
+      applyRectVars(to, 14);
     };
 
     window.addEventListener("resize", onReflow);
@@ -212,77 +176,34 @@ export function CreateUserMorph({
       window.removeEventListener("resize", onReflow);
       window.removeEventListener("scroll", onReflow, true);
     };
-  }, [mounted, anchorRef, phase]);
-
-  // Click outside + Esc
-  useEffect(() => {
-    if (!mounted) return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-
-    const onPointerDown = (e: PointerEvent) => {
-      const card = cardRef.current;
-      if (!card) return;
-      if (!card.contains(e.target as Node)) onClose();
-    };
-
-    document.addEventListener("keydown", onKeyDown);
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown);
-      document.removeEventListener("pointerdown", onPointerDown);
-    };
-  }, [mounted, onClose]);
-
-  const onTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
-    if (e.target !== cardRef.current) return;
-
-    if (phase === "opening" && !prefersReducedMotion) {
-      setPhase("open");
-      return;
-    }
-    if (phase === "closing" && !prefersReducedMotion) {
-      setMounted(false);
-      setPhase("closed");
-    }
-  };
-
-  if (!mounted) return null;
-
-  const expanded = phase === "open" || phase === "opening";
-  const showExpandedContent = phase === "open"; // wait until fully expanded
-  const showCollapsedFace = phase !== "open"; // show button face while animating
+  }, [open, anchorRef]);
 
   return (
     <>
-      <div className={`morphBackdrop ${expanded ? "morphBackdropOpen" : ""}`} />
+      {/* Backdrop is visual only; doesn't close and doesn't eat clicks */}
+      <div
+        className={`morphBackdrop ${open ? "morphBackdropOpen" : ""}`}
+        style={{ pointerEvents: "none" }}
+      />
 
       <div
         ref={cardRef}
-        className={`morphCard ${expanded ? "morphCardExpanded" : "morphCardCollapsed"}`}
-        onTransitionEnd={onTransitionEnd}
+        className={`morphCard ${open ? "morphCardExpanded" : "morphCardCollapsed"}`}
         role="dialog"
         aria-modal="true"
+        aria-hidden={!open}
+        style={{ pointerEvents: open ? "auto" : "none" }}
       >
-        {/* Button face (makes it feel like the button is transforming) */}
-        <div
-          className={`morphFace ${showCollapsedFace ? "morphFaceShow" : ""}`}
-        >
-          {collapsedContent}
-        </div>
+        <div className="morphFace">{collapsedContent}</div>
 
-        {/* Real content appears only once expanded */}
-        <div
-          className={`morphInner ${showExpandedContent ? "morphInnerOpen" : ""}`}
-        >
+        <div className={`morphInner ${open ? "morphInnerOpen" : ""}`}>
           <div className="morphHeader">
             <div>
               <div className="morphTitle">{title}</div>
               {subtitle ? <div className="morphSub">{subtitle}</div> : null}
             </div>
 
+            {/* ONLY close trigger */}
             <button
               type="button"
               className="morphCloseBtn"

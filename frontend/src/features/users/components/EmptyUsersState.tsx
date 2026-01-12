@@ -2,9 +2,18 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type Point = { x: number; y: number };
 
-type Props = {
-  targetRef: React.RefObject<HTMLElement | null>;
+type ArrowData = {
+  start: Point;
+  tip: Point;
+  endDir: Point;
+  vw: number;
+  vh: number;
+};
+
+type Props<T extends HTMLElement = HTMLElement> = {
+  targetRef: React.RefObject<T | null>;
   popping?: boolean;
+  seed?: number;
 };
 
 function clamp(n: number, lo: number, hi: number) {
@@ -21,16 +30,14 @@ function norm(x: number, y: number) {
 function add(p: Point, v: Point, s: number): Point {
   return { x: p.x + v.x * s, y: p.y + v.y * s };
 }
+
+// deterministic pseudo-random in [-1, 1], based only on seed + salt
 function randSigned(seed: number, salt: number) {
   const s = Math.sin(seed * 999.17 + salt * 123.43) * 43758.5453;
   const f = s - Math.floor(s);
   return f * 2 - 1;
 }
 
-/**
- * One smooth loopy cubic that ENDS at `tip`.
- * End tangent is aligned with `endDir` via c2 behind the tip.
- */
 function buildLoopyCubicToTip(
   start: Point,
   tip: Point,
@@ -57,7 +64,6 @@ function buildLoopyCubicToTip(
     y: start.y + dy * t1 + perp.y * (loop * 1.1) + perp.y * w1,
   };
 
-  // Force final tangent to match endDir: tangent at end is (tip - c2)
   const handle = clamp(distance * 0.22, 34, 90);
   const c2 = {
     x: tip.x - endDir.x * handle,
@@ -70,24 +76,16 @@ function buildLoopyCubicToTip(
             ${tip.x.toFixed(1)} ${tip.y.toFixed(1)}`;
 }
 
-/**
- * Arrowhead that STARTS at the same TIP as the shaft, and diverges into two wings.
- * (So it feels like the path breaks into the head at the tip.)
- */
 function buildOpen30HeadFromTip(tip: Point, endDir: Point) {
   const perp = { x: -endDir.y, y: endDir.x };
 
-  // Tune these:
-  const headLen = 16; // longer/shorter head
-  const spread = 9; // openness (bigger = wider V)
-  const control = 7; // how "curvy" the split feels
+  const headLen = 16;
+  const spread = 9;
+  const control = 7;
 
-  // Wings go backwards from the tip
   const leftEnd = add(add(tip, endDir, -headLen), perp, spread);
   const rightEnd = add(add(tip, endDir, -headLen), perp, -spread);
 
-  // Make it feel like it "splits" from the tip:
-  // first controls push outward immediately from the tip.
   const leftC1 = add(add(tip, endDir, -control * 0.2), perp, spread * 0.85);
   const leftC2 = add(add(tip, endDir, -control * 1.0), perp, spread * 0.55);
 
@@ -104,21 +102,21 @@ function buildOpen30HeadFromTip(tip: Point, endDir: Point) {
               ${rightEnd.x.toFixed(1)} ${rightEnd.y.toFixed(1)}`;
 }
 
-export function EmptyUsersState({ targetRef, popping }: Props) {
+function approxEqual(a: number, b: number, eps = 0.75) {
+  return Math.abs(a - b) <= eps;
+}
+
+export function EmptyUsersState<T extends HTMLElement = HTMLElement>({
+  targetRef,
+  popping,
+  seed = 1,
+}: Props<T>) {
   const textRef = useRef<HTMLDivElement | null>(null);
   const shaftRef = useRef<SVGPathElement | null>(null);
   const headRef = useRef<SVGPathElement | null>(null);
 
-  const seedRef = useRef<number>(Math.random() * 1_000_000);
-
-  const [data, setData] = useState<{
-    start: Point;
-    tip: Point; // shaft ends HERE
-    endDir: Point;
-  } | null>(null);
-
-  const [dashShaft, setDashShaft] = useState(1400);
-  const [dashHead, setDashHead] = useState(240);
+  const [data, setData] = useState<ArrowData | null>(null);
+  const lastRef = useRef<ArrowData | null>(null);
 
   useLayoutEffect(() => {
     let raf = 0;
@@ -142,7 +140,6 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
       };
 
       const endDir = norm(buttonCorner.x - start.x, buttonCorner.y - start.y);
-
       const distance = len(buttonCorner.x - start.x, buttonCorner.y - start.y);
       const gap = clamp(distance * 0.22, 44, 96);
 
@@ -151,7 +148,30 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
         y: buttonCorner.y - endDir.y * gap,
       };
 
-      setData({ start, tip, endDir });
+      const next: ArrowData = {
+        start,
+        tip,
+        endDir,
+        vw: window.innerWidth,
+        vh: window.innerHeight,
+      };
+
+      const prev = lastRef.current;
+      const changed =
+        !prev ||
+        !approxEqual(prev.start.x, next.start.x) ||
+        !approxEqual(prev.start.y, next.start.y) ||
+        !approxEqual(prev.tip.x, next.tip.x) ||
+        !approxEqual(prev.tip.y, next.tip.y) ||
+        !approxEqual(prev.endDir.x, next.endDir.x, 0.02) ||
+        !approxEqual(prev.endDir.y, next.endDir.y, 0.02) ||
+        prev.vw !== next.vw ||
+        prev.vh !== next.vh;
+
+      if (changed) {
+        lastRef.current = next;
+        setData(next);
+      }
     };
 
     const schedule = () => {
@@ -163,9 +183,9 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", schedule, true);
 
+    // Only observe the text block (not the button) to avoid “New” jank
     const ro = new ResizeObserver(schedule);
     if (textRef.current) ro.observe(textRef.current);
-    if (targetRef.current) ro.observe(targetRef.current);
 
     return () => {
       cancelAnimationFrame(raf);
@@ -174,8 +194,6 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
       ro.disconnect();
     };
   }, [targetRef]);
-
-  const seed = seedRef.current;
 
   const { shaftD, headD } = useMemo(() => {
     if (!data) return { shaftD: "", headD: "" };
@@ -187,19 +205,19 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
 
   useLayoutEffect(() => {
     const el = shaftRef.current;
-    if (!el) return;
+    if (!el || !shaftD) return;
     const total = el.getTotalLength?.();
     if (typeof total === "number" && Number.isFinite(total)) {
-      setDashShaft(Math.ceil(total + 120));
+      el.style.setProperty("--dash", String(Math.ceil(total + 120)));
     }
   }, [shaftD]);
 
   useLayoutEffect(() => {
     const el = headRef.current;
-    if (!el) return;
+    if (!el || !headD) return;
     const total = el.getTotalLength?.();
     if (typeof total === "number" && Number.isFinite(total)) {
-      setDashHead(Math.ceil(total + 40));
+      el.style.setProperty("--dash", String(Math.ceil(total + 40)));
     }
   }, [headD]);
 
@@ -210,7 +228,7 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
           className={`emptyArrowOverlay ${popping ? "emptyArrowPop" : ""}`}
           width="100%"
           height="100%"
-          viewBox={`0 0 ${window.innerWidth} ${window.innerHeight}`}
+          viewBox={`0 0 ${data.vw} ${data.vh}`}
           aria-hidden="true"
         >
           <g transform="translate(0 -15)">
@@ -218,13 +236,11 @@ export function EmptyUsersState({ targetRef, popping }: Props) {
               ref={shaftRef}
               d={shaftD}
               className="emptyArrowShaft emptyArrowShaftDraw"
-              style={{ ["--dash" as any]: `${dashShaft}` }}
             />
             <path
               ref={headRef}
               d={headD}
               className="emptyArrowHead emptyArrowHeadDraw"
-              style={{ ["--dash" as any]: `${dashHead}` }}
             />
           </g>
         </svg>

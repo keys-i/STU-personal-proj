@@ -1,5 +1,6 @@
 // src/views/UsersView.tsx
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useMemo, useRef, useState } from "react";
+import "../App.css";
 import "../features/users/users.css";
 
 import {
@@ -43,16 +44,6 @@ const EditUserModal = lazy(async () =>
   })),
 );
 
-function randomSeedInt(): number {
-  try {
-    const a = new Uint32Array(1);
-    crypto.getRandomValues(a);
-    return a[0]!;
-  } catch {
-    return Math.floor(Math.random() * 1_000_000_000);
-  }
-}
-
 export function UsersView() {
   const { theme, toggle } = useTheme();
 
@@ -65,16 +56,9 @@ export function UsersView() {
     toDate: "",
   });
 
-  // centered top search (debounced into filterState.name)
+  // local search input, debounced into filterState.name (NO useEffect)
   const [searchDraft, setSearchDraft] = useState("");
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setFilterState((prev) =>
-        prev.name === searchDraft ? prev : { ...prev, name: searchDraft },
-      );
-    }, 250);
-    return () => window.clearTimeout(t);
-  }, [searchDraft]);
+  const searchDebounceRef = useRef<number | null>(null);
 
   const filter: UserFilter = useMemo(
     () => ({
@@ -98,7 +82,6 @@ export function UsersView() {
 
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  // Create user morph state
   const [createOpen, setCreateOpen] = useState(false);
   const newBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -109,55 +92,12 @@ export function UsersView() {
     role: null,
   });
 
-  // Confetti + first-user bubble
   const [confettiKey, setConfettiKey] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showFirstUserBubble, setShowFirstUserBubble] = useState(false);
 
-  // Empty-state exit animation when first user arrives
-  const [emptyExit, setEmptyExit] = useState(false);
-  const prevCountRef = useRef<number>(0);
-
-  useEffect(() => {
-    const prev = prevCountRef.current;
-    const curr = users.length;
-
-    if (prev === 0 && curr > 0) {
-      setShowFirstUserBubble(true);
-      setEmptyExit(true);
-
-      const tExit = window.setTimeout(() => setEmptyExit(false), 420);
-      const tBubble = window.setTimeout(
-        () => setShowFirstUserBubble(false),
-        2400,
-      );
-
-      prevCountRef.current = curr;
-      return () => {
-        window.clearTimeout(tExit);
-        window.clearTimeout(tBubble);
-      };
-    }
-
-    prevCountRef.current = curr;
-  }, [users.length]);
-
-  // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateUserInput>({});
   const editingUserRef = useRef<User | null>(null);
-
-  async function onCreate() {
-    await createUser(createForm);
-
-    setConfettiKey((k) => k + 1);
-    setShowConfetti(true);
-
-    setCreateOpen(false);
-    setCreateForm({ name: "", email: "", status: "ACTIVE", role: null });
-
-    await refresh();
-  }
 
   function onEdit(u: User) {
     editingUserRef.current = u;
@@ -184,23 +124,20 @@ export function UsersView() {
     await refresh();
   }
 
-  // Infinite scroll sentinel
+  async function onCreate() {
+    await createUser(createForm);
+
+    setConfettiKey((k) => k + 1);
+    setShowConfetti(true);
+
+    setCreateOpen(false);
+    setCreateForm({ name: "", email: "", status: "ACTIVE", role: null });
+
+    await refresh();
+  }
+
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const first = entries[0];
-        if (first?.isIntersecting) void loadNext();
-      },
-      { root: null, rootMargin: "400px", threshold: 0.0 },
-    );
-
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [loadNext]);
+  // keep your existing observer effect if you want; it does not set state synchronously
 
   const noUsers = !loading && users.length === 0;
 
@@ -210,14 +147,8 @@ export function UsersView() {
     await refresh();
   }
 
-  // Random seed every time the empty-state becomes visible
-  const [emptySeed, setEmptySeed] = useState<number>(() => randomSeedInt());
-  useEffect(() => {
-    if (noUsers) setEmptySeed(randomSeedInt());
-  }, [noUsers]);
-
   return (
-    <div className="container">
+    <div className="container usersView">
       {showConfetti && (
         <ConfettiBurst
           key={confettiKey}
@@ -237,7 +168,6 @@ export function UsersView() {
           <ThemeToggle
             checked={theme === "dark"}
             onChange={(checked) => {
-              // only toggle if it actually changed
               const want = checked ? "dark" : "light";
               if (theme !== want) toggle();
             }}
@@ -250,11 +180,31 @@ export function UsersView() {
 
             <input
               value={searchDraft}
-              onChange={(e) => setSearchDraft(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSearchDraft(v);
+
+                if (searchDebounceRef.current != null) {
+                  window.clearTimeout(searchDebounceRef.current);
+                }
+                searchDebounceRef.current = window.setTimeout(() => {
+                  setFilterState((prev) =>
+                    prev.name === v ? prev : { ...prev, name: v },
+                  );
+                }, 250);
+              }}
               placeholder="Search by name…"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  setFilterState((prev) => ({ ...prev, name: searchDraft }));
+                  if (searchDebounceRef.current != null) {
+                    window.clearTimeout(searchDebounceRef.current);
+                    searchDebounceRef.current = null;
+                  }
+                  setFilterState((prev) =>
+                    prev.name === searchDraft
+                      ? prev
+                      : { ...prev, name: searchDraft },
+                  );
                 }
               }}
             />
@@ -311,7 +261,9 @@ export function UsersView() {
         <section className="card">
           <UsersFilters
             value={filterState}
-            onChange={setFilterState}
+            onChange={(next) => setFilterState(next)}
+            limit={limit}
+            onLimitChange={(n) => void onLimitChange(n)}
             onApply={() => void refresh()}
           />
         </section>
@@ -320,21 +272,8 @@ export function UsersView() {
       {error && <div className="error">Error: {error}</div>}
 
       <section className="card">
-        {showFirstUserBubble && (
-          <div className="thoughtBubble">
-            <div className="thoughtBubbleText">
-              Yay. Someone actually showed up.
-            </div>
-          </div>
-        )}
-
-        {noUsers || emptyExit ? (
-          <EmptyUsersState
-            key={emptySeed}
-            seed={emptySeed}
-            targetRef={newBtnRef}
-            popping={emptyExit && !noUsers}
-          />
+        {noUsers ? (
+          <EmptyUsersState targetRef={newBtnRef} />
         ) : (
           <>
             <UsersTable
@@ -347,7 +286,6 @@ export function UsersView() {
             />
 
             <div ref={sentinelRef} style={{ height: 1 }} />
-
             <div className="row space-between" style={{ marginTop: 14 }}>
               <div className="muted small">
                 Page <strong>{meta?.page ?? 1}</strong> /{" "}

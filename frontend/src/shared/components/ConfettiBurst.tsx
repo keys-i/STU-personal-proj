@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type Piece = {
   left: number; // 0..100
@@ -13,20 +13,47 @@ type Props = {
   count?: number;
 };
 
+function mulberry32(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function makeSeed(): number {
+  try {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return buf[0] ?? 1;
+  } catch {
+    // fallback without Math.random
+    return (Date.now() ^ 0x9e3779b9) >>> 0;
+  }
+}
+
 export function ConfettiBurst({ onDone, count = 34 }: Props) {
+  // state is safe to read during render (unlike ref.current with React Compiler rules)
+  const [seed] = useState<number>(() => makeSeed());
+
   const pieces = useMemo<Piece[]>(() => {
+    const rand = mulberry32(seed);
     const out: Piece[] = [];
+
     for (let i = 0; i < count; i++) {
       out.push({
-        left: Math.random() * 100,
-        delay: Math.random() * 0.15,
-        dur: 1.2 + Math.random() * 0.6,
-        rot: Math.random() * 360,
-        size: 6 + Math.random() * 8,
+        left: rand() * 100,
+        delay: rand() * 0.15,
+        dur: 1.2 + rand() * 0.6,
+        rot: rand() * 360,
+        size: 6 + rand() * 8,
       });
     }
     return out;
-  }, [count]);
+  }, [count, seed]);
 
   useEffect(() => {
     const t = window.setTimeout(onDone, 1800);
