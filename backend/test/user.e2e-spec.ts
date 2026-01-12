@@ -370,13 +370,13 @@ describe('UsersController (e2e)', () => {
       const email2 = uniqEmail('conflict-b');
 
       const u1 = await createUser(app, {
-        name: 'A',
+        name: 'AA',
         email: email1,
         status: 'ACTIVE',
       });
 
       const u2 = await createUser(app, {
-        name: 'B',
+        name: 'BB',
         email: email2,
         status: 'ACTIVE',
       });

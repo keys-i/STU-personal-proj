@@ -24,7 +24,7 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { UserService } from './users.service.js';
-import type {
+import {
   CreateUserDto,
   ListUsersQueryDto,
   IdParamDto,
@@ -33,7 +33,7 @@ import type {
 
 @Controller('users')
 export class UsersController {
-  /* istanbul ignore next */ constructor(private readonly users: UserService) {}
+  constructor(private readonly users: UserService) {}
 
   @Get()
   @ApiOperation({
