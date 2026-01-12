@@ -8,11 +8,15 @@ type Piece = {
   size: number; // px
 };
 
-export function ConfettiBurst(props: { onDone: () => void }) {
+type Props = {
+  onDone: () => void;
+  count?: number;
+};
+
+export function ConfettiBurst({ onDone, count = 34 }: Props) {
   const pieces = useMemo<Piece[]>(() => {
-    const n = 34;
     const out: Piece[] = [];
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < count; i++) {
       out.push({
         left: Math.random() * 100,
         delay: Math.random() * 0.15,
@@ -22,12 +26,12 @@ export function ConfettiBurst(props: { onDone: () => void }) {
       });
     }
     return out;
-  }, []);
+  }, [count]);
 
   useEffect(() => {
-    const t = setTimeout(props.onDone, 1800);
-    return () => clearTimeout(t);
-  }, [props]);
+    const t = window.setTimeout(onDone, 1800);
+    return () => window.clearTimeout(t);
+  }, [onDone]);
 
   return (
     <div className="confetti" aria-hidden="true">

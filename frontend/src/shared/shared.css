@@ -1,0 +1,221 @@
+/* src/shared/shared.css */
+
+/* reset styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* -------------------------------------------------------
+   Theme Toggle
+   Markup shape:
+   <div className="themeToggle">
+     <input className="themeToggle__input" ... />
+     <label className="themeToggle__label" ...>
+       <span className="themeToggleMoon">
+         <span className="themeToggleCrater crater1" />
+         ...
+       </span>
+       <span className="themeToggleCloud ray1" />
+       <span className="themeToggleCloud ray2" />
+       <span className="themeToggleCloud ray3" />
+     </label>
+   </div>
+-------------------------------------------------------- */
+
+.themeToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* hide checkbox (accessible) */
+.themeToggle__input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+}
+
+/* pill */
+.themeToggle__label {
+    width: 200px;
+    height: 100px;
+    display: inline-block;
+    border-radius: 50px;
+    cursor: pointer;
+    position: relative;
+
+    background: #83c9f2;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
+}
+
+/* the sun/moon element (knob) */
+.themeToggleMoon {
+    background: #f2f50e;
+    width: 50%;
+    height: 90%;
+    display: inline-block;
+    border-radius: 50%;
+    margin: 5px;
+
+    position: relative;
+    z-index: 2;
+
+    transition: all 1000ms cubic-bezier(0.29, 0.24, 0, 0.95);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+}
+
+/* clouds/stars */
+.themeToggleCloud {
+    position: absolute;
+    background: #fff;
+    transition: all 400ms cubic-bezier(0.29, 0.24, 0, 0.95);
+    box-shadow: 0 2px 6px rgb(0 0 0 / 30%);
+}
+
+/* crater dots inside moon (hidden in light mode) */
+.themeToggleCrater {
+    position: absolute;
+    background: #f5e387;
+    border-radius: 50%;
+    opacity: 0;
+    transition: all 400ms ease-in;
+}
+
+/* crater placements */
+.themeToggleCrater.crater1 {
+    width: 20px;
+    height: 20px;
+    top: 40px;
+    left: 10px;
+}
+.themeToggleCrater.crater2 {
+    width: 10px;
+    height: 10px;
+    top: 20px;
+    left: 50px;
+}
+.themeToggleCrater.crater3 {
+    width: 30px;
+    height: 30px;
+    top: 40px;
+    left: 60px;
+}
+.themeToggleCrater.crater4 {
+    width: 5px;
+    height: 5px;
+    top: 70px;
+    left: 40px;
+}
+.themeToggleCrater.crater5 {
+    width: 15px;
+    height: 15px;
+    top: 6px;
+    left: 20px;
+}
+
+/* cloud placements (ray1/2/3 naming) */
+.themeToggleCloud.ray1 {
+    width: 50px;
+    height: 30px;
+    top: 50%;
+    left: 40%;
+    border-radius: 50%;
+    z-index: 1;
+}
+.themeToggleCloud.ray2 {
+    width: 60px;
+    height: 40px;
+    top: 15%;
+    left: -5%;
+    border-radius: 50%;
+    z-index: 3;
+}
+.themeToggleCloud.ray3 {
+    width: 100px;
+    height: 40px;
+    top: 75%;
+    left: 20%;
+    border-radius: 80%;
+    z-index: 3;
+}
+
+/* ---------------- checked (dark mode) ---------------- */
+
+/* pill becomes night */
+.themeToggle__input:checked + .themeToggle__label {
+    background: #00224e !important;
+}
+
+/* moon slides right + changes color */
+.themeToggle__input:checked + .themeToggle__label > .themeToggleMoon {
+    transform: translate3d(90px, 0px, 0px) rotate(0deg);
+    background: #ebc815 !important;
+}
+
+/* clouds become tiny stars */
+.themeToggle__input:checked + .themeToggle__label > .themeToggleCloud {
+    width: 5px !important;
+    height: 5px !important;
+    background: #f2f50e !important;
+    border-radius: 50%;
+    box-shadow: none;
+}
+
+/* star placements */
+.themeToggle__input:checked + .themeToggle__label > .themeToggleCloud.ray1 {
+    transform: translate(-10px, -30px);
+}
+.themeToggle__input:checked + .themeToggle__label > .themeToggleCloud.ray2 {
+    transform: translate(30px, 30px);
+}
+.themeToggle__input:checked + .themeToggle__label > .themeToggleCloud.ray3 {
+    transform: translate(10px, -20px);
+}
+
+/* craters fade in */
+.themeToggle__input:checked
+    + .themeToggle__label
+    > .themeToggleMoon
+    > .themeToggleCrater {
+    opacity: 0.8 !important;
+}
+
+/* -------------------------------------------------------
+   Confetti (shared component)
+-------------------------------------------------------- */
+
+.confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 80;
+}
+
+.confettiPiece {
+    position: absolute;
+    top: -20px;
+    border-radius: 2px;
+    background: currentColor;
+    color: currentColor;
+    opacity: 0.9;
+
+    animation-name: confettiFall;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation-fill-mode: forwards;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-10px) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(110vh) rotate(360deg);
+        opacity: 0;
+    }
+}

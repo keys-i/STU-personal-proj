@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 type MenuItem = {
   key: string;
@@ -18,6 +18,19 @@ type Props = {
 export function FloatingMenu({ open, onClose, items, align = "right" }: Props) {
   const menuId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // keep mounted during close animation
+  const [mounted, setMounted] = useState(open);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+    } else if (mounted) {
+      setClosing(true);
+    }
+  }, [open, mounted]);
 
   useEffect(() => {
     if (!open) return;
@@ -41,6 +54,8 @@ export function FloatingMenu({ open, onClose, items, align = "right" }: Props) {
     };
   }, [open, onClose]);
 
+  if (!mounted) return null;
+
   return (
     <div ref={rootRef} className="menuAnchor">
       <div
@@ -49,9 +64,16 @@ export function FloatingMenu({ open, onClose, items, align = "right" }: Props) {
         aria-hidden={!open}
         className={[
           "floatingMenu",
-          open ? "floatingMenuOpen" : "",
+          open && !closing ? "floatingMenuOpen" : "",
+          closing ? "floatingMenuClosing" : "",
           align === "left" ? "floatingMenuLeft" : "floatingMenuRight",
         ].join(" ")}
+        onTransitionEnd={(e) => {
+          if (!closing) return;
+          if (e.propertyName !== "transform") return;
+          setMounted(false);
+          setClosing(false);
+        }}
       >
         {items.map((it) => (
           <button
