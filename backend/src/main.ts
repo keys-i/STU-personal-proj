@@ -6,6 +6,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { ValidationPipe } from '@nestjs/common';
+import cors from '@fastify/cors';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -23,7 +24,13 @@ async function bootstrap() {
     }),
   );
 
-  // Swagger config for my project
+  // CORS (Fastify, ESM)
+  await app.register(cors, {
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
+
   const config = new DocumentBuilder()
     .setTitle('API spec')
     .setDescription(
@@ -36,12 +43,9 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
-
   await app.listen({ port, host: '0.0.0.0' });
 
   console.log(`Application is running on: ${await app.getUrl()}`);
-
-  // TODO: Hot reload
 }
 
 void bootstrap();
