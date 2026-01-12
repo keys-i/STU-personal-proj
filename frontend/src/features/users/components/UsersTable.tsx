@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { User } from "../types";
+import { formatDate } from "../../../shared/utils/date";
 
 type Props = {
   users: User[];
@@ -14,21 +15,6 @@ type Props = {
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
-}
-
-const dateFmt = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
-  month: "short",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
-function formatDate(iso?: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return dateFmt.format(d);
 }
 
 type WithCreatedAt = { createdAt?: string | null };
