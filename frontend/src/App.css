@@ -193,9 +193,14 @@ button.danger {
 
 /* Center stack: Theme button above search */
 .topbarCenter {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+
     display: flex;
     flex-direction: column;
     gap: 10px;
+
     justify-content: center;
     align-items: stretch;
 }
@@ -222,6 +227,7 @@ button.danger {
 .searchBar {
     position: relative;
     width: 100%;
+    padding: 0; /* padded to feel aligned to site width */
 }
 
 .searchBarIcon {
@@ -235,7 +241,7 @@ button.danger {
 
 .searchBar input {
     width: 100%;
-    padding: 12px 44px 12px 40px;
+    padding: 12px 52px 12px 40px; /* was 56px on the right */
     border-radius: 999px;
     border: 1px solid var(--border);
     background: transparent;
@@ -244,7 +250,7 @@ button.danger {
 
 .searchBarBtn {
     position: absolute;
-    right: 8px;
+    right: 10px; /* was 16px */
     top: 50%;
     transform: translateY(-50%);
     border: 1px solid var(--chip-border);
@@ -257,7 +263,6 @@ button.danger {
     align-items: center;
     justify-content: center;
 }
-
 .searchBarBtnActive {
     outline: 2px solid var(--chip-border);
 }
@@ -557,4 +562,83 @@ button.danger {
     .filtersAdvanced {
         grid-template-columns: 1fr 1fr;
     }
+}
+
+/* Anchor wrapper so the menu positions relative to the button */
+.newMenuWrap {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Floating menu popover */
+.menuAnchor {
+    position: relative;
+}
+
+.floatingMenu {
+    position: absolute;
+    top: calc(100% + 10px);
+    min-width: 220px;
+    padding: 6px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+    pointer-events: none;
+    transition:
+        opacity 140ms ease,
+        transform 160ms ease;
+    z-index: 70;
+}
+
+.floatingMenuRight {
+    right: 0;
+}
+
+.floatingMenuLeft {
+    left: 0;
+}
+
+.floatingMenuOpen {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+/* Menu items */
+.menuItem {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px 10px;
+    border-radius: 12px;
+
+    background: transparent;
+    border: 0;
+    color: var(--fg);
+    cursor: pointer;
+    text-align: left;
+}
+
+.menuItem:hover {
+    background: var(--chip);
+}
+
+.menuItemIcon {
+    display: inline-flex;
+    color: var(--muted);
+}
+
+.menuItemLabel {
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.menuItemDanger {
+    color: var(--danger-border);
 }
