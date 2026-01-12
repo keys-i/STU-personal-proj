@@ -10,6 +10,9 @@
     --danger-border: #f0b2b2;
     --thead: #fafafa;
     --row-border: #f0f0f0;
+
+    /* unify easing */
+    --ease-swoop: cubic-bezier(0.65, 0.05, 0.36, 1);
 }
 
 :root[data-theme="dark"] {
@@ -126,7 +129,7 @@ button.danger {
     border-color: var(--chip-border);
 }
 
-/* Reusable Icon Button */
+/* Reusable icon button */
 .iconBtn {
     display: inline-flex;
     align-items: center;
@@ -159,7 +162,7 @@ button.danger {
     }
 }
 
-/* Topbar: left title, center stack, right actions */
+/* Topbar */
 .topbar {
     display: grid;
     grid-template-columns: 1fr minmax(320px, 620px) 1fr;
@@ -191,16 +194,14 @@ button.danger {
     margin-top: 4px;
 }
 
-/* Center stack: Theme button above search */
+/* Center stack */
 .topbarCenter {
     width: 100%;
     max-width: 620px;
     margin: 0 auto;
-
     display: flex;
     flex-direction: column;
     gap: 10px;
-
     justify-content: center;
     align-items: stretch;
 }
@@ -223,11 +224,10 @@ button.danger {
     color: var(--muted);
 }
 
-/* Search bar: icon left, filter button inside on right */
+/* Search bar */
 .searchBar {
     position: relative;
     width: 100%;
-    padding: 0; /* padded to feel aligned to site width */
 }
 
 .searchBarIcon {
@@ -241,16 +241,17 @@ button.danger {
 
 .searchBar input {
     width: 100%;
-    padding: 12px 52px 12px 40px; /* was 56px on the right */
+    padding: 12px 54px 12px 40px;
     border-radius: 999px;
     border: 1px solid var(--border);
     background: transparent;
     color: var(--fg);
 }
 
+/* Filters icon inside search */
 .searchBarBtn {
     position: absolute;
-    right: 10px; /* was 16px */
+    right: 8px;
     top: 50%;
     transform: translateY(-50%);
     border: 1px solid var(--chip-border);
@@ -263,6 +264,7 @@ button.danger {
     align-items: center;
     justify-content: center;
 }
+
 .searchBarBtnActive {
     outline: 2px solid var(--chip-border);
 }
@@ -297,16 +299,12 @@ button.danger {
     filter: brightness(1.03);
 }
 
-/* Cards with title row */
-.cardTitleRow {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
+.empty {
+    padding: 14px;
+    color: var(--muted);
 }
 
-/* Filters (advanced panel inside a card) */
+/* Filters */
 .filtersPanel {
     display: grid;
     gap: 12px;
@@ -319,12 +317,6 @@ button.danger {
     align-items: end;
 }
 
-/* Details */
-.details {
-    display: grid;
-    gap: 8px;
-}
-
 /* Errors */
 .error {
     background: var(--danger-bg);
@@ -332,115 +324,6 @@ button.danger {
     padding: 10px 12px;
     border-radius: 12px;
     margin: 12px 0;
-}
-
-/* Drawer */
-.drawerBackdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0);
-    pointer-events: none;
-    transition: background 220ms ease;
-    z-index: 50;
-}
-
-.drawerBackdropOpen {
-    background: rgba(0, 0, 0, 0.45);
-    pointer-events: auto;
-}
-
-.drawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    height: 100%;
-    width: min(520px, 92vw);
-    background: var(--card);
-    border-left: 1px solid var(--border);
-    transform: translateX(102%);
-    transition: transform 240ms ease;
-    display: flex;
-    flex-direction: column;
-    padding: 14px;
-}
-
-.drawerOpen {
-    transform: translateX(0);
-}
-
-.drawerHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-}
-
-.drawerTitle {
-    font-size: 16px;
-    font-weight: 800;
-}
-
-.drawerSub {
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 4px;
-}
-
-.drawerBody {
-    padding-top: 14px;
-    overflow: auto;
-}
-
-/* Empty State */
-.emptyState {
-    position: relative;
-    padding: 26px 16px 30px 16px;
-    border: 1px dashed var(--border);
-    border-radius: 14px;
-    margin-top: 14px;
-    text-align: center;
-}
-
-.emptyFace {
-    font-size: 44px;
-    font-weight: 900;
-    letter-spacing: 1px;
-}
-
-.emptyTitle {
-    font-size: 18px;
-    font-weight: 800;
-    margin-top: 10px;
-}
-
-.emptySub {
-    color: var(--muted);
-    margin-top: 6px;
-}
-
-.emptyArrowWrap {
-    position: absolute;
-    right: 18px;
-    top: -48px;
-    color: var(--muted);
-    animation: arrowWiggle 1.2s ease-in-out infinite;
-}
-
-.emptyArrow {
-    width: 170px;
-    height: 90px;
-}
-
-@keyframes arrowWiggle {
-    0%,
-    100% {
-        transform: translate(0, 0) rotate(0deg);
-    }
-    50% {
-        transform: translate(-6px, 4px) rotate(-2deg);
-    }
 }
 
 /* Thought bubble */
@@ -537,6 +420,333 @@ button.danger {
     border: 0;
 }
 
+/* Empty state */
+.emptyState {
+    position: relative;
+    padding: 28px 16px 30px 16px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    margin-top: 14px;
+    text-align: center;
+}
+
+.emptyStatePop {
+    pointer-events: none;
+    animation: emptyFadeOut 420ms ease forwards;
+}
+
+@keyframes emptyFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.01);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+}
+
+.emptyFace {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.emptyTitle {
+    font-size: 18px;
+    font-weight: 800;
+    margin-top: 0;
+}
+
+.emptySub {
+    color: var(--muted);
+    margin-top: 8px;
+}
+
+/* Fullscreen arrow overlay */
+.emptyArrowOverlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    color: var(--muted);
+}
+
+/* Wrapper group: wobble moves BOTH shaft + head */
+.emptyArrowGroup {
+    transform-origin: center;
+    animation: arrowWobble 1.35s ease-in-out 620ms infinite;
+}
+
+/* Shared stroke style */
+.emptyArrowShaft,
+.emptyArrowHead {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.95;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
+}
+
+/* Shaft draws first */
+.emptyArrowShaftDraw {
+    stroke-dasharray: var(--dash);
+    stroke-dashoffset: var(--dash);
+    animation: arrowDraw 620ms var(--ease-swoop) forwards;
+}
+
+/* Head draws AFTER shaft */
+.emptyArrowHeadDraw {
+    stroke-dasharray: var(--dash);
+    stroke-dashoffset: var(--dash);
+    opacity: 0.95;
+    animation:
+        headDraw 220ms var(--ease-swoop) forwards,
+        headIn 220ms var(--ease-swoop) forwards;
+    animation-delay: 620ms, 620ms;
+}
+
+@keyframes arrowDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes headDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes headIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.96);
+        transform-origin: center;
+    }
+    100% {
+        opacity: 0.95;
+        transform: scale(1);
+    }
+}
+
+/* scribbly wobble */
+@keyframes arrowWobble {
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    20% {
+        transform: translate(-0.8px, 0.35px) rotate(-0.55deg);
+    }
+    45% {
+        transform: translate(0.6px, -0.55px) rotate(0.7deg);
+    }
+    70% {
+        transform: translate(-0.45px, -0.25px) rotate(-0.35deg);
+    }
+}
+
+/* Pop when first user appears */
+.emptyArrowPop .emptyArrowGroup {
+    animation:
+        arrowPop 420ms var(--ease-swoop),
+        arrowWobble 1.35s ease-in-out infinite;
+}
+
+.emptyArrowPop .emptyArrowShaft,
+.emptyArrowPop .emptyArrowHead {
+    animation: arrowPopStroke 420ms var(--ease-swoop);
+}
+
+@keyframes arrowPop {
+    0% {
+        transform: scale(1);
+    }
+    60% {
+        transform: scale(1.012);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes arrowPopStroke {
+    0% {
+        opacity: 0.75;
+        stroke-width: 3.1;
+    }
+    60% {
+        opacity: 1;
+        stroke-width: 4;
+    }
+    100% {
+        opacity: 0.95;
+        stroke-width: 3.1;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .iconBtnPulse,
+    .emptyArrowGroup,
+    .emptyArrowShaftDraw,
+    .emptyArrowHeadDraw,
+    .emptyArrowPop .emptyArrowGroup {
+        animation: none !important;
+    }
+
+    .emptyArrowShaftDraw,
+    .emptyArrowHeadDraw {
+        stroke-dasharray: 0 !important;
+        stroke-dashoffset: 0 !important;
+        opacity: 1 !important;
+    }
+}
+
+/* Floating menu (optional) */
+.newMenuWrap {
+    position: relative;
+    display: inline-flex;
+}
+
+/* Morphing create window (button -> window) */
+.morphBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    pointer-events: none;
+    transition: background 180ms var(--ease-swoop);
+    z-index: 70;
+}
+
+.morphBackdropOpen {
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+}
+
+.morphCard {
+    position: fixed;
+    left: var(--x, 0px);
+    top: var(--y, 0px);
+    width: var(--w, 0px);
+    height: var(--h, 0px);
+    border-radius: var(--r, 10px);
+    overflow: hidden;
+    z-index: 80;
+
+    transition:
+        left 220ms var(--ease-swoop),
+        top 220ms var(--ease-swoop),
+        width 220ms var(--ease-swoop),
+        height 220ms var(--ease-swoop),
+        border-radius 220ms var(--ease-swoop),
+        box-shadow 220ms var(--ease-swoop),
+        background 220ms var(--ease-swoop),
+        border-color 220ms var(--ease-swoop);
+}
+
+.morphCardCollapsed {
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    box-shadow: none;
+}
+
+.morphCardExpanded {
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+}
+
+.morphFace {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transition: opacity 160ms var(--ease-swoop);
+    pointer-events: none;
+}
+
+.morphFaceShow {
+    opacity: 1;
+}
+
+.morphButtonFace {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--fg);
+}
+
+.morphInner {
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms var(--ease-swoop);
+    display: flex;
+    flex-direction: column;
+}
+
+.morphInnerOpen {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.morphHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.morphTitle {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.morphSub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.morphCloseBtn {
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    color: var(--fg);
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 160ms var(--ease-swoop);
+}
+
+.morphCloseBtn:hover {
+    transform: translateY(-1px);
+}
+
+.morphBody {
+    padding: 12px;
+    overflow: auto;
+}
+
 /* Responsive */
 @media (max-width: 900px) {
     .topbar {
@@ -562,83 +772,4 @@ button.danger {
     .filtersAdvanced {
         grid-template-columns: 1fr 1fr;
     }
-}
-
-/* Anchor wrapper so the menu positions relative to the button */
-.newMenuWrap {
-    position: relative;
-    display: inline-flex;
-}
-
-/* Floating menu popover */
-.menuAnchor {
-    position: relative;
-}
-
-.floatingMenu {
-    position: absolute;
-    top: calc(100% + 10px);
-    min-width: 220px;
-    padding: 6px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    background: var(--card);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
-
-    opacity: 0;
-    transform: translateY(-6px) scale(0.98);
-    pointer-events: none;
-    transition:
-        opacity 140ms ease,
-        transform 160ms ease;
-    z-index: 70;
-}
-
-.floatingMenuRight {
-    right: 0;
-}
-
-.floatingMenuLeft {
-    left: 0;
-}
-
-.floatingMenuOpen {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    pointer-events: auto;
-}
-
-/* Menu items */
-.menuItem {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-
-    padding: 10px 10px;
-    border-radius: 12px;
-
-    background: transparent;
-    border: 0;
-    color: var(--fg);
-    cursor: pointer;
-    text-align: left;
-}
-
-.menuItem:hover {
-    background: var(--chip);
-}
-
-.menuItemIcon {
-    display: inline-flex;
-    color: var(--muted);
-}
-
-.menuItemLabel {
-    font-size: 14px;
-    font-weight: 650;
-}
-
-.menuItemDanger {
-    color: var(--danger-border);
 }

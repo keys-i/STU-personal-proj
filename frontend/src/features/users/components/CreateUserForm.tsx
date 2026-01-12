@@ -1,14 +1,7 @@
 import type { CreateUserInput, UserRole, UserStatus } from "../types";
 
 const STATUSES: UserStatus[] = ["ACTIVE", "INACTIVE", "SUSPENDED"];
-const ROLES: (UserRole | "")[] = [
-  "",
-  "USER",
-  "ADMIN",
-  "MODERATOR",
-  "STAFF",
-  "GUEST",
-]; // adjust
+const ROLES: (UserRole | "")[] = ["", "USER", "ADMIN", "MODERATOR"]; // adjust
 
 export function CreateUserForm(props: {
   value: CreateUserInput;
