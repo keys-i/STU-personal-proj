@@ -12,6 +12,13 @@ export type User = {
   deletedAt: string | null; // ISO | null
 };
 
+export type UserFilter = {
+  name?: string;
+  status?: UserStatus;
+  fromDate?: string;
+  toDate?: string;
+};
+
 export type PaginationMeta = {
   page: number;
   limit: number;
