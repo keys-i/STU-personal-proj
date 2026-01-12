@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { Test, type TestingModule } from '@nestjs/testing';
 import { ValidationPipe } from '@nestjs/common';
 import {
   FastifyAdapter,
-  NestFastifyApplication,
+  type NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import qs from 'qs';
 import request from 'supertest';
@@ -45,7 +45,7 @@ function uniqEmail(prefix = 'e2e') {
 async function createUser(
   app: NestFastifyApplication,
   body: { name: string; email: string; status: UserStatus; role?: string },
-) {
+): Promise<UserShape> {
   const res = await request(app.getHttpServer())
     .post('/users')
     .send(body)
@@ -57,7 +57,8 @@ async function createUser(
       }
     });
 
-  return res;
+  // supertest body is `any`, so cast ONCE here (no extra helpers)
+  return res.body as UserShape;
 }
 
 describe('UsersController (e2e)', () => {
@@ -75,7 +76,7 @@ describe('UsersController (e2e)', () => {
       }),
     );
 
-    // ensure DTO validation runs in e2e
+    // ensure DTO validation runs in e2e (requires DTOs to be CLASSES, not `type`)
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -103,16 +104,32 @@ describe('UsersController (e2e)', () => {
       const body = res.body as Paginated<UserShape>;
       expect(Array.isArray(body.data)).toBe(true);
 
-      expect(body.meta).toEqual(
-        expect.objectContaining({
-          page: expect.any(Number),
-          limit: expect.any(Number),
-          total: expect.any(Number),
-          totalPages: expect.any(Number),
-          hasNext: expect.any(Boolean),
-          hasPrev: expect.any(Boolean),
-        }),
-      );
+      // no expect.any(...)
+      expect(typeof body.meta).toBe('object');
+
+      expect(Number.isInteger(body.meta.page)).toBe(true);
+      expect(body.meta.page).toBeGreaterThanOrEqual(1);
+
+      expect(Number.isInteger(body.meta.limit)).toBe(true);
+      expect(body.meta.limit).toBeGreaterThanOrEqual(1);
+      expect(body.meta.limit).toBeLessThanOrEqual(100);
+
+      expect(Number.isInteger(body.meta.total)).toBe(true);
+      expect(body.meta.total).toBeGreaterThanOrEqual(0);
+
+      expect(Number.isInteger(body.meta.totalPages)).toBe(true);
+      expect(body.meta.totalPages).toBeGreaterThanOrEqual(1);
+
+      expect(typeof body.meta.hasNext).toBe('boolean');
+      expect(typeof body.meta.hasPrev).toBe('boolean');
+
+      // basic sanity on returned rows
+      for (const u of body.data) {
+        expect(u.id).toMatch(UUID_RE);
+        expect(typeof u.name).toBe('string');
+        expect(typeof u.email).toBe('string');
+        expect(['ACTIVE', 'INACTIVE', 'SUSPENDED']).toContain(u.status);
+      }
     });
 
     it('clamps/normalizes page+limit at service layer (accept 200 or 400 depending on DTO)', async () => {
@@ -171,8 +188,8 @@ describe('UsersController (e2e)', () => {
         status: 'INACTIVE',
       });
 
-      const from = new Date(new Date(u1.body.createdAt).getTime() - 1000);
-      const to = new Date(new Date(u2.body.createdAt).getTime() + 1000);
+      const from = new Date(new Date(u1.createdAt).getTime() - 1000);
+      const to = new Date(new Date(u2.createdAt).getTime() + 1000);
 
       const res = await request(app.getHttpServer())
         .get('/users')
@@ -197,6 +214,7 @@ describe('UsersController (e2e)', () => {
         expect(u.deletedAt).toBeNull();
         expect(u.status).toBe('ACTIVE');
         expect(u.name.toLowerCase()).toContain('jo');
+
         const createdAt = new Date(u.createdAt).getTime();
         expect(createdAt).toBeGreaterThanOrEqual(from.getTime());
         expect(createdAt).toBeLessThanOrEqual(to.getTime());
@@ -214,12 +232,12 @@ describe('UsersController (e2e)', () => {
         role: 'USER',
       };
 
-      const created = await request(app.getHttpServer())
+      const createdRes = await request(app.getHttpServer())
         .post('/users')
         .send(payload)
         .expect(201);
 
-      const user1 = created.body as UserShape;
+      const user1 = createdRes.body as UserShape;
       expect(user1.id).toMatch(UUID_RE);
       expect(user1).toEqual(
         expect.objectContaining({
@@ -231,12 +249,12 @@ describe('UsersController (e2e)', () => {
         }),
       );
 
-      const existing = await request(app.getHttpServer())
+      const existingRes = await request(app.getHttpServer())
         .post('/users')
         .send(payload)
         .expect(200);
 
-      const user2 = existing.body as UserShape;
+      const user2 = existingRes.body as UserShape;
       expect(user2.id).toBe(user1.id);
       expect(user2.email).toBe(payload.email);
     });
@@ -250,7 +268,7 @@ describe('UsersController (e2e)', () => {
         status: 'ACTIVE',
       });
 
-      const id = created.body.id as string;
+      const id = created.id;
 
       await request(app.getHttpServer()).delete(`/users/${id}`).expect(204);
 
@@ -307,13 +325,14 @@ describe('UsersController (e2e)', () => {
         status: 'ACTIVE',
       });
 
-      const id = created.body.id as string;
+      const id = created.id;
 
-      const got = await request(app.getHttpServer())
+      const gotRes = await request(app.getHttpServer())
         .get(`/users/${id}`)
         .expect(200);
 
-      expect((got.body as UserShape).email).toBe(email);
+      const got = gotRes.body as UserShape;
+      expect(got.email).toBe(email);
 
       await request(app.getHttpServer()).delete(`/users/${id}`).expect(204);
 
@@ -331,14 +350,14 @@ describe('UsersController (e2e)', () => {
         status: 'ACTIVE',
       });
 
-      const id = created.body.id as string;
+      const id = created.id;
 
-      const updated = await request(app.getHttpServer())
+      const updatedRes = await request(app.getHttpServer())
         .patch(`/users/${id}`)
         .send({ name: 'Patched Name', status: 'INACTIVE' })
         .expect(200);
 
-      const u = updated.body as UserShape;
+      const u = updatedRes.body as UserShape;
 
       expect(u).toEqual(
         expect.objectContaining({
@@ -382,8 +401,8 @@ describe('UsersController (e2e)', () => {
       });
 
       await request(app.getHttpServer())
-        .patch(`/users/${u2.body.id}`)
-        .send({ email: (u1.body as UserShape).email })
+        .patch(`/users/${u2.id}`)
+        .send({ email: u1.email })
         .expect(409);
     });
 
@@ -396,7 +415,7 @@ describe('UsersController (e2e)', () => {
         status: 'ACTIVE',
       });
 
-      const id = created.body.id as string;
+      const id = created.id;
 
       await request(app.getHttpServer()).delete(`/users/${id}`).expect(204);
 
@@ -417,7 +436,7 @@ describe('UsersController (e2e)', () => {
         status: 'ACTIVE',
       });
 
-      const id = created.body.id as string;
+      const id = created.id;
 
       await request(app.getHttpServer()).delete(`/users/${id}`).expect(204);
       await request(app.getHttpServer()).delete(`/users/${id}`).expect(204);
@@ -444,7 +463,7 @@ describe('UsersController (e2e)', () => {
         status: 'ACTIVE',
       });
 
-      const id = created.body.id as string;
+      const id = created.id;
 
       await request(app.getHttpServer()).delete(`/users/${id}`).expect(204);
 
