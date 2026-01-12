@@ -1,4 +1,3 @@
-// src/features/users/hooks/useUsers.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listUsers, type UserFilter } from "../api";
 import type { Paginated, User } from "../types";
