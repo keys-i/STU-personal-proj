@@ -1,3 +1,8 @@
+import axios, {
+  AxiosError,
+  type AxiosInstance,
+  type AxiosResponse,
+} from "axios";
 import type {
   CreateUserInput,
   Paginated,
@@ -6,39 +11,7 @@ import type {
   UserStatus,
 } from "./types";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3000";
-
-function qs(params: Record<string, string | number | undefined>): string {
-  const u = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v === undefined || v === "") continue;
-    u.set(k, String(v));
-  }
-  const s = u.toString();
-  return s ? `?${s}` : "";
-}
-
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  });
-
-  if (res.status === 204) return undefined as T;
-
-  const text = await res.text();
-  const json = text ? (JSON.parse(text) as unknown) : undefined;
-
-  if (!res.ok) {
-    const msg =
-      typeof json === "object" && json && "message" in json
-        ? String((json as any).message)
-        : `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-
-  return json as T;
-}
+const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
 
 export type UserFilter = {
   name?: string;
@@ -47,44 +20,93 @@ export type UserFilter = {
   toDate?: string; // ISO
 };
 
+type ErrorPayload = {
+  message?: unknown;
+};
+
+function toErrorMessage(err: unknown): string {
+  if (!axios.isAxiosError(err)) {
+    return err instanceof Error ? err.message : "Unknown error";
+  }
+
+  const e = err as AxiosError<ErrorPayload | string>;
+  const data = e.response?.data;
+
+  if (typeof data === "string" && data.trim()) return data;
+
+  if (data && typeof data === "object" && "message" in data) {
+    const msg = (data as ErrorPayload).message;
+    if (typeof msg === "string" && msg.trim()) return msg;
+  }
+
+  if (e.response) return `HTTP ${e.response.status}`;
+  return e.message || "Network error";
+}
+
+function createApi(): AxiosInstance {
+  const instance = axios.create({
+    baseURL: API_BASE,
+    headers: { "Content-Type": "application/json" },
+    // withCredentials: true,
+  });
+
+  // Convert axios errors into normal Error with a nice message
+  instance.interceptors.response.use(
+    (res: AxiosResponse) => res,
+    (err: unknown) => Promise.reject(new Error(toErrorMessage(err))),
+  );
+
+  return instance;
+}
+
+const api = createApi();
+
+function buildParams(args: {
+  page: number;
+  limit: number;
+  filter?: UserFilter;
+}): Record<string, string | number> {
+  const { page, limit, filter } = args;
+
+  const params: Record<string, string | number> = { page, limit };
+
+  if (filter?.name) params["filter[name]"] = filter.name;
+  if (filter?.status) params["filter[status]"] = filter.status;
+  if (filter?.fromDate) params["filter[fromDate]"] = filter.fromDate;
+  if (filter?.toDate) params["filter[toDate]"] = filter.toDate;
+
+  return params;
+}
+
 export async function listUsers(args: {
   page: number;
   limit: number;
   filter?: UserFilter;
 }): Promise<Paginated<User>> {
-  const { page, limit, filter } = args;
-
-  // Supports your backend style: filter[name], filter[status], etc
-  return http<Paginated<User>>(
-    `/users${qs({
-      page,
-      limit,
-      "filter[name]": filter?.name,
-      "filter[status]": filter?.status,
-      "filter[fromDate]": filter?.fromDate,
-      "filter[toDate]": filter?.toDate,
-    })}`,
-  );
+  const res = await api.get<Paginated<User>>("/users", {
+    params: buildParams(args),
+  });
+  return res.data;
 }
 
 export async function getUser(id: string): Promise<User> {
-  return http<User>(`/users/${encodeURIComponent(id)}`);
+  const res = await api.get<User>(`/users/${id}`);
+  return res.data;
 }
 
 export async function createUser(input: CreateUserInput): Promise<User> {
-  return http<User>(`/users`, { method: "POST", body: JSON.stringify(input) });
+  const res = await api.post<User>("/users", input);
+  return res.data;
 }
 
 export async function updateUser(
   id: string,
   input: UpdateUserInput,
 ): Promise<User> {
-  return http<User>(`/users/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(input),
-  });
+  const res = await api.patch<User>(`/users/${id}`, input);
+  return res.data;
 }
 
 export async function softDeleteUser(id: string): Promise<void> {
-  return http<void>(`/users/${encodeURIComponent(id)}`, { method: "DELETE" });
+  await api.delete<void>(`/users/${id}`);
 }
