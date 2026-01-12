@@ -278,24 +278,23 @@ describe("useUsers", () => {
     expect(result.current.meta).toBeNull();
   });
 
-  it.each([
+  type Case = { title: string; initial: UserFilter; next: UserFilter };
+
+  it.each<Case>([
     {
       title: "re-fetches when filter.name changes",
-      initial: { name: "a" } satisfies UserFilter,
-      next: { name: "ab" } satisfies UserFilter,
+      initial: { name: "a" },
+      next: { name: "ab" },
     },
     {
       title: "re-fetches when filter.status changes",
-      initial: { status: "ACTIVE" } satisfies UserFilter,
-      next: { status: "INACTIVE" } satisfies UserFilter,
+      initial: { status: "ACTIVE" },
+      next: { status: "INACTIVE" },
     },
     {
       title: "re-fetches when adding from/to dates",
-      initial: {} satisfies UserFilter,
-      next: {
-        fromDate: "2025-01-01",
-        toDate: "2025-01-31",
-      } satisfies UserFilter,
+      initial: {},
+      next: { fromDate: "2025-01-01", toDate: "2025-01-31" },
     },
   ])("$title", async ({ initial, next }) => {
     const limit = 10;
