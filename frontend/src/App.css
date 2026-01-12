@@ -45,21 +45,7 @@ body {
         sans-serif;
 }
 
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-
-.header h1 {
-    margin: 0;
-}
-.sub {
-    color: var(--muted);
-    margin-top: 6px;
-}
-
+/* Base UI */
 .card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -73,12 +59,31 @@ h2 {
     font-size: 18px;
 }
 
-.grid {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
+.sub,
+.muted {
+    color: var(--muted);
 }
 
+.small {
+    font-size: 12px;
+}
+
+.mono {
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.space-between {
+    justify-content: space-between;
+}
+
+/* Inputs */
 label {
     display: flex;
     flex-direction: column;
@@ -97,6 +102,7 @@ select {
     color: var(--fg);
 }
 
+/* Buttons */
 button {
     padding: 10px 12px;
     border: 1px solid var(--border);
@@ -120,28 +126,149 @@ button.danger {
     border-color: var(--chip-border);
 }
 
-.row {
+/* Reusable Icon Button */
+.iconBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+
+.iconBtn svg {
+    display: block;
+}
+
+.iconBtnActive {
+    outline: 2px solid var(--chip-border);
+}
+
+.iconBtnPulse {
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Topbar: left title, center stack, right actions */
+.topbar {
+    display: grid;
+    grid-template-columns: 1fr minmax(320px, 620px) 1fr;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 14px 0;
+}
+
+.topbarLeft {
     display: flex;
+    align-items: center;
+}
+
+.topbarRight {
+    display: flex;
+    justify-content: flex-end;
     gap: 10px;
     align-items: center;
 }
-.space-between {
-    justify-content: space-between;
+
+.brandTitle {
+    font-size: 18px;
+    font-weight: 800;
 }
 
-.filters {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr 1fr auto 120px;
-    gap: 12px;
-    align-items: end;
-    margin-bottom: 12px;
+.brandSub {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 4px;
 }
 
+/* Center stack: Theme button above search */
+.topbarCenter {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.themeBtn {
+    width: fit-content;
+    margin: 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--chip-border);
+    background: transparent;
+    padding: 8px 10px;
+    border-radius: 999px;
+    color: var(--fg);
+}
+
+.themeBtnLabel {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+/* Search bar: icon left, filter button inside on right */
+.searchBar {
+    position: relative;
+    width: 100%;
+}
+
+.searchBarIcon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.searchBar input {
+    width: 100%;
+    padding: 12px 44px 12px 40px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg);
+}
+
+.searchBarBtn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    color: var(--fg);
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.searchBarBtnActive {
+    outline: 2px solid var(--chip-border);
+}
+
+/* Table */
 .table {
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
 }
+
 .thead,
 .trow {
     display: grid;
@@ -149,24 +276,51 @@ button.danger {
     gap: 10px;
     padding: 10px 12px;
 }
+
 .thead {
     background: var(--thead);
     font-weight: 700;
     font-size: 12px;
 }
+
 .trow {
     border-top: 1px solid var(--row-border);
     font-size: 14px;
 }
+
 .trow:hover {
     filter: brightness(1.03);
 }
 
-.empty {
-    padding: 14px;
-    color: var(--muted);
+/* Cards with title row */
+.cardTitleRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
 }
 
+/* Filters (advanced panel inside a card) */
+.filtersPanel {
+    display: grid;
+    gap: 12px;
+}
+
+.filtersAdvanced {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 140px auto;
+    gap: 12px;
+    align-items: end;
+}
+
+/* Details */
+.details {
+    display: grid;
+    gap: 8px;
+}
+
+/* Errors */
 .error {
     background: var(--danger-bg);
     border: 1px solid var(--danger-border);
@@ -175,22 +329,180 @@ button.danger {
     margin: 12px 0;
 }
 
-.muted {
+/* Drawer */
+.drawerBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    pointer-events: none;
+    transition: background 220ms ease;
+    z-index: 50;
+}
+
+.drawerBackdropOpen {
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+}
+
+.drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100%;
+    width: min(520px, 92vw);
+    background: var(--card);
+    border-left: 1px solid var(--border);
+    transform: translateX(102%);
+    transition: transform 240ms ease;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+}
+
+.drawerOpen {
+    transform: translateX(0);
+}
+
+.drawerHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.drawerTitle {
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.drawerSub {
     color: var(--muted);
-}
-.small {
     font-size: 12px;
-}
-.mono {
-    font-family:
-        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    margin-top: 4px;
 }
 
-.details {
-    display: grid;
-    gap: 8px;
+.drawerBody {
+    padding-top: 14px;
+    overflow: auto;
 }
 
+/* Empty State */
+.emptyState {
+    position: relative;
+    padding: 26px 16px 30px 16px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    margin-top: 14px;
+    text-align: center;
+}
+
+.emptyFace {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.emptyTitle {
+    font-size: 18px;
+    font-weight: 800;
+    margin-top: 10px;
+}
+
+.emptySub {
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+.emptyArrowWrap {
+    position: absolute;
+    right: 18px;
+    top: -48px;
+    color: var(--muted);
+    animation: arrowWiggle 1.2s ease-in-out infinite;
+}
+
+.emptyArrow {
+    width: 170px;
+    height: 90px;
+}
+
+@keyframes arrowWiggle {
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    50% {
+        transform: translate(-6px, 4px) rotate(-2deg);
+    }
+}
+
+/* Thought bubble */
+.thoughtBubble {
+    position: relative;
+    margin: 14px 0 10px 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.thoughtBubbleText {
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    padding: 10px 14px;
+    border-radius: 999px;
+    color: var(--fg);
+    font-weight: 700;
+    position: relative;
+}
+
+.thoughtBubbleText::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    bottom: -10px;
+    width: 14px;
+    height: 14px;
+    background: var(--chip);
+    border-right: 1px solid var(--chip-border);
+    border-bottom: 1px solid var(--chip-border);
+    transform: rotate(45deg);
+}
+
+/* Confetti */
+.confetti {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 80;
+}
+
+.confettiPiece {
+    position: absolute;
+    top: -20px;
+    border-radius: 2px;
+    background: currentColor;
+    color: var(--fg);
+    opacity: 0.9;
+    animation-name: confettiFall;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+    animation-fill-mode: forwards;
+}
+
+@keyframes confettiFall {
+    0% {
+        transform: translateY(-10px) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(110vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Modal */
 .modalBackdrop {
     position: fixed;
     inset: 0;
@@ -208,19 +520,41 @@ button.danger {
     border: 1px solid var(--border);
 }
 
+/* A11y */
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+/* Responsive */
 @media (max-width: 900px) {
-    .grid {
-        grid-template-columns: 1fr 1fr;
+    .topbar {
+        grid-template-columns: 1fr;
+        gap: 12px;
     }
-    .filters {
-        grid-template-columns: 1fr 1fr;
+
+    .topbarRight {
+        justify-content: flex-start;
+        flex-wrap: wrap;
     }
+
     .thead,
     .trow {
         grid-template-columns: 100px 1fr 1fr;
     }
+
     .thead div:nth-child(n + 4),
     .trow div:nth-child(n + 4) {
         display: none;
+    }
+
+    .filtersAdvanced {
+        grid-template-columns: 1fr 1fr;
     }
 }

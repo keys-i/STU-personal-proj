@@ -1,4 +1,4 @@
-import { Suspense, lazy, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 
 import {
@@ -18,10 +18,20 @@ import type {
 import { useTheme } from "./hooks/useTheme";
 import { useUsers } from "./hooks/useUsers";
 
-import { CreateUserForm } from "./components/CreateUserForm";
-import { UsersFilters, type FilterState } from "./components/UsersFilters";
 import { UsersTable } from "./components/UsersTable";
 import { UserDetails } from "./components/UserDetails";
+import { UsersFilters, type FilterState } from "./components/UsersFilters";
+
+import {
+  PencilIcon,
+  SearchIcon,
+  SlidersIcon,
+  ThemeIcon,
+} from "./components/Icons";
+import { CreateUserForm } from "./components/CreateUserForm";
+import { CreateUserDrawer } from "./components/CreateUserDrawer";
+import { EmptyUsersState } from "./components/EmptyUsersState";
+import { ConfettiBurst } from "./components/ConfettiBurst";
 
 const EditUserModal = lazy(async () =>
   import("./components/EditUserModal").then((m) => ({
@@ -47,6 +57,17 @@ export default function App() {
     toDate: "",
   });
 
+  // centered top search draft (debounced into filterState.name)
+  const [searchDraft, setSearchDraft] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setFilterState((prev) =>
+        prev.name === searchDraft ? prev : { ...prev, name: searchDraft },
+      );
+    }, 250);
+    return () => clearTimeout(t);
+  }, [searchDraft]);
+
   const filter: UserFilter = useMemo(
     () => ({
       name: filterState.name || undefined,
@@ -70,6 +91,9 @@ export default function App() {
   const [selectedId, setSelectedId] = useState("");
   const [selected, setSelected] = useState<User | null>(null);
 
+  const [createOpen, setCreateOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const [createForm, setCreateForm] = useState<CreateUserInput>({
     name: "",
     email: "",
@@ -77,6 +101,25 @@ export default function App() {
     role: null,
   });
 
+  // Confetti + first-user bubble
+  const [confettiKey, setConfettiKey] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showFirstUserBubble, setShowFirstUserBubble] = useState(false);
+  const prevCountRef = useRef<number>(0);
+
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    const curr = users.length;
+
+    if (prev === 0 && curr > 0) {
+      setShowFirstUserBubble(true);
+      const t = setTimeout(() => setShowFirstUserBubble(false), 2400);
+      return () => clearTimeout(t);
+    }
+    prevCountRef.current = curr;
+  }, [users.length]);
+
+  // Edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateUserInput>({});
   const editingUserRef = useRef<User | null>(null);
@@ -90,6 +133,11 @@ export default function App() {
 
   async function onCreate() {
     await createUser(createForm);
+
+    setConfettiKey((k) => k + 1);
+    setShowConfetti(true);
+    setCreateOpen(false);
+
     setCreateForm({ name: "", email: "", status: "ACTIVE", role: null });
     await refresh();
   }
@@ -131,8 +179,7 @@ export default function App() {
 
   // Infinite scroll sentinel
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  // Attach observer once
-  useMemo(() => {
+  useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
 
@@ -148,48 +195,98 @@ export default function App() {
     return () => obs.disconnect();
   }, [loadNext]);
 
+  const noUsers = !loading && users.length === 0;
+
   return (
     <div className="container">
-      <header className="header">
-        <div>
-          <h1>STU Users</h1>
-          <div className="sub">
-            Swipe right (or double-click) a row to edit · Infinite scroll
-            enabled
+      {showConfetti && (
+        <ConfettiBurst
+          key={confettiKey}
+          onDone={() => setShowConfetti(false)}
+        />
+      )}
+
+      <header className="topbar">
+        <div className="topbarLeft">
+          <div className="brand">
+            <div className="brandTitle">Users</div>
+            <div className="brandSub">Create, search, edit, soft-delete.</div>
           </div>
         </div>
 
-        <button type="button" onClick={toggle} className="chip">
-          Theme: {theme}
-        </button>
+        <div className="topbarCenter">
+          <button
+            type="button"
+            className="themeBtn"
+            onClick={toggle}
+            aria-label="Toggle theme"
+            title="Toggle theme"
+          >
+            <ThemeIcon />
+            <span className="themeBtnLabel">
+              {theme === "dark" ? "Dark" : "Light"}
+            </span>
+          </button>
+
+          <div className="searchBar">
+            <span className="searchBarIcon" aria-hidden="true">
+              <SearchIcon />
+            </span>
+
+            <input
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              placeholder="Search by name…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter")
+                  setFilterState((prev) => ({ ...prev, name: searchDraft }));
+              }}
+            />
+
+            <button
+              type="button"
+              className={`searchBarBtn ${filtersOpen ? "searchBarBtnActive" : ""}`}
+              onClick={() => setFiltersOpen((v) => !v)}
+              aria-label="Filters"
+              title="Filters"
+            >
+              <SlidersIcon />
+            </button>
+          </div>
+        </div>
+
+        <div className="topbarRight">
+          <button
+            type="button"
+            className={`iconBtn ${noUsers ? "iconBtnPulse" : ""}`}
+            onClick={() => setCreateOpen(true)}
+            title="Create user"
+            aria-label="Create user"
+          >
+            <PencilIcon />
+            <span>New</span>
+          </button>
+        </div>
       </header>
+
+      {filtersOpen && (
+        <section className="card">
+          <UsersFilters
+            value={filterState}
+            onChange={setFilterState}
+            limit={limit}
+            onLimitChange={setLimit}
+            onApply={() => void refresh()}
+          />
+        </section>
+      )}
 
       {error && <div className="error">Error: {error}</div>}
 
       <section className="card">
-        <h2>Create user</h2>
-        <CreateUserForm
-          value={createForm}
-          onChange={setCreateForm}
-          onSubmit={onCreate}
-          disabled={loading}
-        />
-      </section>
-
-      <section className="card">
-        <h2>Users</h2>
-
-        <UsersFilters
-          value={filterState}
-          onChange={setFilterState}
-          limit={limit}
-          onLimitChange={(n) => setLimit(n)}
-          onApply={() => void refresh()}
-        />
-
         <div className="row space-between">
           <div>
-            Total <strong>{meta?.total ?? 0}</strong> · Page{" "}
+            <strong>{meta?.total ?? 0}</strong> users · page{" "}
             <strong>{meta?.page ?? 1}</strong> / {meta?.totalPages ?? 1}
           </div>
           <div className="row">
@@ -203,32 +300,54 @@ export default function App() {
           </div>
         </div>
 
-        <UsersTable
-          users={users}
-          onView={(id) => void onView(id)}
-          onEdit={onEdit}
-          onDelete={(id) => void onDelete(id)}
-        />
+        {showFirstUserBubble && (
+          <div className="thoughtBubble">
+            <div className="thoughtBubbleText">
+              Yay. Someone actually showed up.
+            </div>
+          </div>
+        )}
 
-        {/* Infinite scroll trigger */}
-        <div ref={sentinelRef} style={{ height: 1 }} />
+        {noUsers ? (
+          <EmptyUsersState />
+        ) : (
+          <>
+            <UsersTable
+              users={users}
+              onView={(id) => void onView(id)}
+              onEdit={onEdit}
+              onDelete={(id) => void onDelete(id)}
+            />
 
-        <div className="row" style={{ marginTop: 12 }}>
-          <button
-            type="button"
-            onClick={() => void loadNext()}
-            disabled={!hasNext || loading}
-          >
-            {hasNext ? "Load more" : "No more pages"}
-          </button>
-          {loading && <span className="muted">Loading…</span>}
-        </div>
+            <div ref={sentinelRef} style={{ height: 1 }} />
+
+            <div className="row" style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => void loadNext()}
+                disabled={!hasNext || loading}
+              >
+                {hasNext ? "Load more" : "End"}
+              </button>
+              {loading && <span className="muted">Loading…</span>}
+            </div>
+          </>
+        )}
       </section>
 
       <section className="card">
         <h2>User details</h2>
         <UserDetails user={selected} />
       </section>
+
+      <CreateUserDrawer open={createOpen} onClose={() => setCreateOpen(false)}>
+        <CreateUserForm
+          value={createForm}
+          onChange={setCreateForm}
+          onSubmit={onCreate}
+          disabled={loading}
+        />
+      </CreateUserDrawer>
 
       <Suspense fallback={null}>
         <EditUserModal
