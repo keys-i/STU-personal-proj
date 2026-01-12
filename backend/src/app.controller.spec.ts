@@ -10,18 +10,31 @@ describe('AppController', () => {
   beforeEach(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService], // real service so app.service.ts gets covered too
+      providers: [AppService],
     }).compile();
 
     controller = moduleRef.get(AppController);
   });
 
-  it('getHello returns "Root for the API"', () => {
-    expect(controller.getHello()).toBe('Root for the API');
+  it('GET / returns RootResponseDto with message "Root for the API"', () => {
+    expect(controller.getRoot()).toEqual({ message: 'Root for the API' });
   });
 
-  it('getHealth returns JSON string with code/status', () => {
+  it('GET /health returns a structured health object', () => {
     const res = controller.getHealth();
-    expect(JSON.parse(res)).toEqual({ code: 200, status: 'API is running' });
+
+    expect(res).toMatchObject({
+      code: 200,
+      status: 'ok',
+      message: 'API is running',
+      service: 'stu-backend',
+    });
+
+    expect(typeof res.uptimeSeconds).toBe('number');
+    expect(res.uptimeSeconds).toBeGreaterThanOrEqual(0);
+
+    // timestamp should be a valid ISO date string
+    expect(typeof res.timestamp).toBe('string');
+    expect(Number.isNaN(Date.parse(res.timestamp))).toBe(false);
   });
 });
