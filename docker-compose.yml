@@ -33,6 +33,19 @@ services:
       db:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.frontend
+    container_name: stu-frontend
+    working_dir: /app/stu-frontend
+    ports:
+      - "5173:5173"
+    env_file:
+      - frontend/.env
+    depends_on:
+      - backend
+
 volumes:
   stu-backend-data:
   stu-postgres-data:
