@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useMemo, useRef, useState } from "react";
+import "./App.css";
+
 import {
   createUser,
   getUser,
-  listUsers,
   softDeleteUser,
   updateUser,
   type UserFilter,
@@ -11,57 +12,64 @@ import type {
   CreateUserInput,
   UpdateUserInput,
   User,
-  UserRole,
   UserStatus,
 } from "./types";
-import "./App.css";
 
-const STATUSES: UserStatus[] = ["ACTIVE", "INACTIVE", "SUSPENDED"];
-const ROLES: (UserRole | "")[] = ["", "USER", "ADMIN", "MODERATOR"];
+import { useTheme } from "./hooks/useTheme";
+import { useUsers } from "./hooks/useUsers";
+
+import { CreateUserForm } from "./components/CreateUserForm";
+import { UsersFilters, type FilterState } from "./components/UsersFilters";
+import { UsersTable } from "./components/UsersTable";
+import { UserDetails } from "./components/UserDetails";
+
+const EditUserModal = lazy(async () =>
+  import("./components/EditUserModal").then((m) => ({
+    default: m.EditUserModal,
+  })),
+);
 
 function isoFromDateInput(v: string): string | undefined {
-  // v is 'YYYY-MM-DD' from <input type="date">
   if (!v) return undefined;
   const d = new Date(`${v}T00:00:00.000Z`);
   return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
 }
 
-function dateInputFromIso(iso?: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
-}
-
 export default function App() {
-  const [page, setPage] = useState(1);
+  const { theme, toggle } = useTheme();
+
   const [limit, setLimit] = useState(10);
 
-  const [filterName, setFilterName] = useState("");
-  const [filterStatus, setFilterStatus] = useState<UserStatus | "">("");
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const [users, setUsers] = useState<User[]>([]);
-  const [meta, setMeta] = useState<{
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  }>({
-    total: 0,
-    totalPages: 1,
-    hasNext: false,
-    hasPrev: false,
+  const [filterState, setFilterState] = useState<FilterState>({
+    name: "",
+    status: "",
+    fromDate: "",
+    toDate: "",
   });
 
-  const [selectedId, setSelectedId] = useState<string>("");
+  const filter: UserFilter = useMemo(
+    () => ({
+      name: filterState.name || undefined,
+      status: (filterState.status || undefined) as UserStatus | undefined,
+      fromDate: isoFromDateInput(filterState.fromDate),
+      toDate: isoFromDateInput(filterState.toDate),
+    }),
+    [filterState],
+  );
+
+  const {
+    items: users,
+    meta,
+    loading,
+    error,
+    refresh,
+    loadNext,
+    hasNext,
+  } = useUsers({ limit, filter });
+
+  const [selectedId, setSelectedId] = useState("");
   const [selected, setSelected] = useState<User | null>(null);
 
-  // create form
   const [createForm, setCreateForm] = useState<CreateUserInput>({
     name: "",
     email: "",
@@ -69,73 +77,26 @@ export default function App() {
     role: null,
   });
 
-  // edit modal
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<UpdateUserInput>({});
+  const editingUserRef = useRef<User | null>(null);
 
-  const filter: UserFilter = useMemo(
-    () => ({
-      name: filterName || undefined,
-      status: filterStatus || undefined,
-      fromDate: isoFromDateInput(fromDate),
-      toDate: isoFromDateInput(toDate),
-    }),
-    [filterName, filterStatus, fromDate, toDate],
-  );
-
-  async function refresh() {
-    setLoading(true);
-    setErr(null);
-    try {
-      const res = await listUsers({ page, limit, filter });
-      setUsers(res.data);
-      setMeta({
-        total: res.meta.total,
-        totalPages: res.meta.totalPages,
-        hasNext: res.meta.hasNext,
-        hasPrev: res.meta.hasPrev,
-      });
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Request failed");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, filterName, filterStatus, fromDate, toDate]);
-
-  async function loadDetails(id: string) {
+  async function onView(id: string) {
     setSelectedId(id);
     setSelected(null);
-    setErr(null);
-    try {
-      const u = await getUser(id);
-      setSelected(u);
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Failed to load user");
-    }
+    const u = await getUser(id);
+    setSelected(u);
   }
 
-  async function onCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setErr(null);
-    try {
-      await createUser({
-        ...createForm,
-        role: createForm.role ?? null,
-      });
-      setCreateForm({ name: "", email: "", status: "ACTIVE", role: null });
-      setPage(1);
-      await refresh();
-    } catch (e2: unknown) {
-      setErr(e2 instanceof Error ? e2.message : "Create failed");
-    }
+  async function onCreate() {
+    await createUser(createForm);
+    setCreateForm({ name: "", email: "", status: "ACTIVE", role: null });
+    await refresh();
   }
 
-  function openEdit(u: User) {
+  function onEdit(u: User) {
+    editingUserRef.current = u;
+    setSelectedId(u.id);
     setEditForm({
       name: u.name,
       email: u.email,
@@ -145,366 +106,139 @@ export default function App() {
     setEditOpen(true);
   }
 
-  async function onEditSave() {
-    if (!selectedId) return;
-    setErr(null);
-    try {
-      await updateUser(selectedId, editForm);
-      setEditOpen(false);
-      await refresh();
-      await loadDetails(selectedId);
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Update failed");
+  async function onSaveEdit() {
+    const u = editingUserRef.current;
+    if (!u) return;
+
+    await updateUser(u.id, editForm);
+    setEditOpen(false);
+    await refresh();
+
+    if (selectedId === u.id) {
+      const updated = await getUser(u.id);
+      setSelected(updated);
     }
   }
 
   async function onDelete(id: string) {
-    setErr(null);
-    try {
-      await softDeleteUser(id);
-      if (selectedId === id) {
-        setSelectedId("");
-        setSelected(null);
-      }
-      await refresh();
-    } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Delete failed");
+    await softDeleteUser(id);
+    if (selectedId === id) {
+      setSelectedId("");
+      setSelected(null);
     }
+    await refresh();
   }
 
-  function applyFiltersNow() {
-    setPage(1);
-    void refresh();
-  }
+  // Infinite scroll sentinel
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Attach observer once
+  useMemo(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first?.isIntersecting) void loadNext();
+      },
+      { root: null, rootMargin: "400px", threshold: 0.0 },
+    );
+
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loadNext]);
 
   return (
     <div className="container">
       <header className="header">
-        <h1>STU Users</h1>
-        <div className="sub">
-          Basic CRUD UI for your NestJS + Prisma backend
+        <div>
+          <h1>STU Users</h1>
+          <div className="sub">
+            Swipe right (or double-click) a row to edit · Infinite scroll
+            enabled
+          </div>
         </div>
+
+        <button type="button" onClick={toggle} className="chip">
+          Theme: {theme}
+        </button>
       </header>
 
-      {err && <div className="error">Error: {err}</div>}
+      {error && <div className="error">Error: {error}</div>}
 
       <section className="card">
         <h2>Create user</h2>
-        <form onSubmit={onCreate} className="grid">
-          <label>
-            Name
-            <input
-              value={createForm.name}
-              onChange={(e) =>
-                setCreateForm((p) => ({ ...p, name: e.target.value }))
-              }
-              placeholder="2–100 chars"
-              required
-              minLength={2}
-              maxLength={100}
-            />
-          </label>
-
-          <label>
-            Email
-            <input
-              value={createForm.email}
-              onChange={(e) =>
-                setCreateForm((p) => ({ ...p, email: e.target.value }))
-              }
-              placeholder="unique email"
-              required
-              type="email"
-            />
-          </label>
-
-          <label>
-            Status
-            <select
-              value={createForm.status}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  status: e.target.value as UserStatus,
-                }))
-              }
-            >
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Role (optional)
-            <select
-              value={createForm.role ?? ""}
-              onChange={(e) =>
-                setCreateForm((p) => ({
-                  ...p,
-                  role: (e.target.value || null) as UserRole | null,
-                }))
-              }
-            >
-              {ROLES.map((r) => (
-                <option key={r || "none"} value={r}>
-                  {r || "(none)"}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="row">
-            <button type="submit">Create</button>
-          </div>
-        </form>
+        <CreateUserForm
+          value={createForm}
+          onChange={setCreateForm}
+          onSubmit={onCreate}
+          disabled={loading}
+        />
       </section>
 
       <section className="card">
         <h2>Users</h2>
 
-        <div className="filters">
-          <label>
-            Name
-            <input
-              value={filterName}
-              onChange={(e) => setFilterName(e.target.value)}
-              placeholder="search name"
-            />
-          </label>
-
-          <label>
-            Status
-            <select
-              value={filterStatus}
-              onChange={(e) =>
-                setFilterStatus(e.target.value as UserStatus | "")
-              }
-            >
-              <option value="">(any)</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            From date
-            <input
-              type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
-            />
-          </label>
-
-          <label>
-            To date
-            <input
-              type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
-            />
-          </label>
-
-          <button type="button" onClick={applyFiltersNow}>
-            Apply
-          </button>
-
-          <label>
-            Limit
-            <select
-              value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-            >
-              {[10, 20, 50, 100].map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+        <UsersFilters
+          value={filterState}
+          onChange={setFilterState}
+          limit={limit}
+          onLimitChange={(n) => setLimit(n)}
+          onApply={() => void refresh()}
+        />
 
         <div className="row space-between">
           <div>
-            Page <strong>{page}</strong> / {meta.totalPages} · Total{" "}
-            <strong>{meta.total}</strong>
+            Total <strong>{meta?.total ?? 0}</strong> · Page{" "}
+            <strong>{meta?.page ?? 1}</strong> / {meta?.totalPages ?? 1}
           </div>
           <div className="row">
             <button
-              disabled={!meta.hasPrev || loading}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              type="button"
+              onClick={() => void refresh()}
+              disabled={loading}
             >
-              Prev
-            </button>
-            <button
-              disabled={!meta.hasNext || loading}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
+              Refresh
             </button>
           </div>
         </div>
 
-        <div className="table">
-          <div className="thead">
-            <div>ID</div>
-            <div>Name</div>
-            <div>Email</div>
-            <div>Status</div>
-            <div>Role</div>
-            <div>Actions</div>
-          </div>
+        <UsersTable
+          users={users}
+          onView={(id) => void onView(id)}
+          onEdit={onEdit}
+          onDelete={(id) => void onDelete(id)}
+        />
 
-          {users.map((u) => (
-            <div className="trow" key={u.id}>
-              <div className="mono">{u.id.slice(0, 8)}…</div>
-              <div>{u.name}</div>
-              <div>{u.email}</div>
-              <div>{u.status}</div>
-              <div>{u.role ?? "-"}</div>
-              <div className="row">
-                <button onClick={() => void loadDetails(u.id)}>View</button>
-                <button
-                  onClick={() => {
-                    setSelectedId(u.id);
-                    openEdit(u);
-                  }}
-                >
-                  Edit
-                </button>
-                <button className="danger" onClick={() => void onDelete(u.id)}>
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+        {/* Infinite scroll trigger */}
+        <div ref={sentinelRef} style={{ height: 1 }} />
 
-          {users.length === 0 && <div className="empty">No users found.</div>}
+        <div className="row" style={{ marginTop: 12 }}>
+          <button
+            type="button"
+            onClick={() => void loadNext()}
+            disabled={!hasNext || loading}
+          >
+            {hasNext ? "Load more" : "No more pages"}
+          </button>
+          {loading && <span className="muted">Loading…</span>}
         </div>
       </section>
 
       <section className="card">
         <h2>User details</h2>
-
-        {!selectedId && (
-          <div className="muted">Select a user from the list.</div>
-        )}
-
-        {selectedId && !selected && <div className="muted">Loading…</div>}
-
-        {selected && (
-          <div className="details">
-            <div>
-              <strong>ID:</strong> <span className="mono">{selected.id}</span>
-            </div>
-            <div>
-              <strong>Name:</strong> {selected.name}
-            </div>
-            <div>
-              <strong>Email:</strong> {selected.email}
-            </div>
-            <div>
-              <strong>Status:</strong> {selected.status}
-            </div>
-            <div>
-              <strong>Role:</strong> {selected.role ?? "-"}
-            </div>
-            <div>
-              <strong>Created:</strong>{" "}
-              {new Date(selected.createdAt).toLocaleString()}
-            </div>
-            <div>
-              <strong>Updated:</strong>{" "}
-              {new Date(selected.updatedAt).toLocaleString()}
-            </div>
-          </div>
-        )}
+        <UserDetails user={selected} />
       </section>
 
-      {editOpen && (
-        <div className="modalBackdrop" onClick={() => setEditOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Edit user</h3>
-
-            <div className="grid">
-              <label>
-                Name
-                <input
-                  value={editForm.name ?? ""}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, name: e.target.value }))
-                  }
-                />
-              </label>
-
-              <label>
-                Email
-                <input
-                  value={editForm.email ?? ""}
-                  onChange={(e) =>
-                    setEditForm((p) => ({ ...p, email: e.target.value }))
-                  }
-                  type="email"
-                />
-              </label>
-
-              <label>
-                Status
-                <select
-                  value={(editForm.status ?? "") as string}
-                  onChange={(e) =>
-                    setEditForm((p) => ({
-                      ...p,
-                      status: e.target.value as UserStatus,
-                    }))
-                  }
-                >
-                  <option value="">(unchanged)</option>
-                  {STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                Role
-                <select
-                  value={(editForm.role ?? "") as string}
-                  onChange={(e) =>
-                    setEditForm((p) => ({
-                      ...p,
-                      role: (e.target.value || null) as UserRole | null,
-                    }))
-                  }
-                >
-                  {ROLES.map((r) => (
-                    <option key={r || "none"} value={r}>
-                      {r || "(none)"}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="row space-between">
-              <button onClick={() => setEditOpen(false)}>Cancel</button>
-              <button onClick={() => void onEditSave()}>Save</button>
-            </div>
-
-            <div className="muted small">
-              Note: backend requires at least one field; leaving everything
-              unchanged may error.
-            </div>
-          </div>
-        </div>
-      )}
+      <Suspense fallback={null}>
+        <EditUserModal
+          open={editOpen}
+          value={editForm}
+          onChange={setEditForm}
+          onClose={() => setEditOpen(false)}
+          onSave={onSaveEdit}
+        />
+      </Suspense>
     </div>
   );
 }
