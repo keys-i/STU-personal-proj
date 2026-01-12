@@ -6,82 +6,33 @@
 
 /* Default (light) variables */
 :root {
-    color-scheme: light;
+  color-scheme: light;
 
-    --bg: #f7f7fb;
-    --fg: #101114;
-    --muted: #5b6470;
+  --bg: #f7f7fb;
+  --fg: #101114;
+  --muted: #5b6470;
 
-    --card: #ffffff;
-    --border: rgba(16, 17, 20, 0.1);
+  --card: #ffffff;
+  --border: rgba(16, 17, 20, 0.1);
 
-    --chip: rgba(16, 17, 20, 0.05);
-    --chip-border: rgba(16, 17, 20, 0.1);
+  --chip: rgba(16, 17, 20, 0.05);
+  --chip-border: rgba(16, 17, 20, 0.1);
 
-    --thead: rgba(16, 17, 20, 0.04);
-    --row-border: rgba(16, 17, 20, 0.07);
+  --thead: rgba(16, 17, 20, 0.04);
+  --row-border: rgba(16, 17, 20, 0.07);
 
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.25);
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --danger-border: rgba(220, 38, 38, 0.25);
 
-    --focus: rgba(59, 130, 246, 0.45);
+  --focus: rgba(59, 130, 246, 0.45);
 
-    /* easing used in your users.css */
-    --ease-swoop: cubic-bezier(0.2, 0.9, 0.2, 1);
+  /* easing used in your users.css */
+  --ease-swoop: cubic-bezier(0.2, 0.9, 0.2, 1);
 }
 
 /* Prefer system dark if no explicit theme is set */
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-        color-scheme: dark;
-
-        --bg: #0b0c10;
-        --fg: #e8eaee;
-        --muted: #a1a7b3;
-
-        --card: #11131a;
-        --border: rgba(232, 234, 238, 0.1);
-
-        --chip: rgba(232, 234, 238, 0.06);
-        --chip-border: rgba(232, 234, 238, 0.1);
-
-        --thead: rgba(232, 234, 238, 0.05);
-        --row-border: rgba(232, 234, 238, 0.08);
-
-        --danger-bg: rgba(248, 113, 113, 0.12);
-        --danger-border: rgba(248, 113, 113, 0.26);
-
-        --focus: rgba(96, 165, 250, 0.55);
-    }
-}
-
-/* Explicit light */
-:root[data-theme="light"],
-body[data-theme="light"] {
-    color-scheme: light;
-
-    --bg: #f7f7fb;
-    --fg: #101114;
-    --muted: #5b6470;
-
-    --card: #ffffff;
-    --border: rgba(16, 17, 20, 0.1);
-
-    --chip: rgba(16, 17, 20, 0.05);
-    --chip-border: rgba(16, 17, 20, 0.1);
-
-    --thead: rgba(16, 17, 20, 0.04);
-    --row-border: rgba(16, 17, 20, 0.07);
-
-    --danger-bg: rgba(220, 38, 38, 0.08);
-    --danger-border: rgba(220, 38, 38, 0.25);
-
-    --focus: rgba(59, 130, 246, 0.45);
-}
-
-/* Explicit dark */
-:root[data-theme="dark"],
-body[data-theme="dark"] {
+  :root:not([data-theme]) {
     color-scheme: dark;
 
     --bg: #0b0c10;
@@ -101,6 +52,55 @@ body[data-theme="dark"] {
     --danger-border: rgba(248, 113, 113, 0.26);
 
     --focus: rgba(96, 165, 250, 0.55);
+  }
+}
+
+/* Explicit light */
+:root[data-theme="light"],
+body[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f7f7fb;
+  --fg: #101114;
+  --muted: #5b6470;
+
+  --card: #ffffff;
+  --border: rgba(16, 17, 20, 0.1);
+
+  --chip: rgba(16, 17, 20, 0.05);
+  --chip-border: rgba(16, 17, 20, 0.1);
+
+  --thead: rgba(16, 17, 20, 0.04);
+  --row-border: rgba(16, 17, 20, 0.07);
+
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --danger-border: rgba(220, 38, 38, 0.25);
+
+  --focus: rgba(59, 130, 246, 0.45);
+}
+
+/* Explicit dark */
+:root[data-theme="dark"],
+body[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0b0c10;
+  --fg: #e8eaee;
+  --muted: #a1a7b3;
+
+  --card: #11131a;
+  --border: rgba(232, 234, 238, 0.1);
+
+  --chip: rgba(232, 234, 238, 0.06);
+  --chip-border: rgba(232, 234, 238, 0.1);
+
+  --thead: rgba(232, 234, 238, 0.05);
+  --row-border: rgba(232, 234, 238, 0.08);
+
+  --danger-bg: rgba(248, 113, 113, 0.12);
+  --danger-border: rgba(248, 113, 113, 0.26);
+
+  --focus: rgba(96, 165, 250, 0.55);
 }
 
 /* ---------------------------
@@ -110,35 +110,35 @@ body[data-theme="dark"] {
 *,
 *::before,
 *::after {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 html,
 body {
-    height: 100%;
+  height: 100%;
 }
 
 body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family:
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        Segoe UI,
-        Roboto,
-        Arial,
-        "Apple Color Emoji",
-        "Segoe UI Emoji";
-    line-height: 1.35;
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Arial,
+    "Apple Color Emoji",
+    "Segoe UI Emoji";
+  line-height: 1.35;
 }
 
 /* A reasonable container used by your UsersView */
 .container {
-    width: min(1080px, 100%);
-    margin: 0 auto;
-    padding: clamp(12px, 2.2vw, 22px);
+  width: min(1080px, 100%);
+  margin: 0 auto;
+  padding: clamp(12px, 2.2vw, 22px);
 }
 
 /* ---------------------------
@@ -149,38 +149,38 @@ button,
 input,
 select,
 textarea {
-    font: inherit;
-    color: inherit;
+  font: inherit;
+  color: inherit;
 }
 
 button {
-    border: 1px solid var(--border);
-    background: var(--chip);
-    color: var(--fg);
+  border: 1px solid var(--border);
+  background: var(--chip);
+  color: var(--fg);
 }
 
 input,
 select,
 textarea {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--fg);
 }
 
 input::placeholder,
 textarea::placeholder {
-    color: color-mix(in srgb, var(--muted) 75%, transparent);
+  color: color-mix(in srgb, var(--muted) 75%, transparent);
 }
 
 /* Focus ring */
 :where(button, input, select, textarea):focus-visible {
-    outline: 3px solid var(--focus);
-    outline-offset: 2px;
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
 }
 
 /* Links */
 a {
-    color: inherit;
+  color: inherit;
 }
 
 /* ---------------------------
@@ -188,15 +188,15 @@ a {
 ---------------------------- */
 
 @supports selector(::-webkit-scrollbar) {
-    ::-webkit-scrollbar {
-        width: 10px;
-        height: 10px;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: color-mix(in srgb, var(--muted) 35%, transparent);
-        border-radius: 999px;
-    }
-    ::-webkit-scrollbar-track {
-        background: transparent;
-    }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--muted) 35%, transparent);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
