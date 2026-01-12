@@ -1,0 +1,38 @@
+name: stu-fullstack
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: stu-db
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - stu-postgres-data:/var/lib/postgresql/data
+    env_file:
+      - backend/.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile.backend
+    container_name: stu-backend
+    working_dir: /app/stu-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - stu-backend-data:/app/data
+    env_file:
+      - backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  stu-backend-data:
+  stu-postgres-data:
