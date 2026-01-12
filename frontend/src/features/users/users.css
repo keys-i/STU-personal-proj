@@ -1,0 +1,797 @@
+/* src/features/users/users.css
+   Users feature UI styles for:
+   - CreateUserForm
+   - CreateUserMorph
+   - EditUserModal
+   - EmptyUsersState
+   - NewFloatingMenu
+   - UsersFilters
+   - UsersTable
+*/
+
+/* Users page shell */
+.container {
+    max-width: 1100px;
+    margin: 24px auto;
+    padding: 0 16px;
+    font-family:
+        system-ui,
+        -apple-system,
+        Segoe UI,
+        Roboto,
+        sans-serif;
+}
+
+/* Base UI */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+h2 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+}
+
+.sub,
+.muted {
+    color: var(--muted);
+}
+
+.small {
+    font-size: 12px;
+}
+
+.mono {
+    font-family:
+        ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.space-between {
+    justify-content: space-between;
+}
+
+/* Inputs */
+label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--fg);
+}
+
+input,
+select {
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    background: transparent;
+    color: var(--fg);
+}
+
+/* Buttons */
+button {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--chip);
+    color: var(--fg);
+    cursor: pointer;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+button.danger {
+    border-color: var(--danger-border);
+    background: var(--danger-bg);
+}
+
+.chip {
+    border-color: var(--chip-border);
+}
+
+/* Reusable icon button */
+.iconBtn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    padding: 10px 12px;
+    border-radius: 10px;
+}
+
+.iconBtn svg {
+    display: block;
+}
+
+.iconBtnActive {
+    outline: 2px solid var(--chip-border);
+}
+
+.iconBtnPulse {
+    animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Topbar */
+.topbar {
+    display: grid;
+    grid-template-columns: 1fr minmax(320px, 620px) 1fr;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 14px 0;
+}
+
+.topbarLeft {
+    display: flex;
+    align-items: center;
+}
+
+.topbarRight {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    align-items: center;
+}
+
+.brandTitle {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+.brandSub {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Center stack */
+.topbarCenter {
+    width: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    align-items: stretch;
+}
+
+/* If you mount ThemeToggle in the center, keep it centered */
+.topbarCenter .themeToggle {
+    margin: 0 auto;
+}
+
+/* Search bar */
+.searchBar {
+    position: relative;
+    width: 100%;
+}
+
+.searchBarIcon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.searchBar input {
+    width: 100%;
+    padding: 12px 54px 12px 40px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg);
+}
+
+/* Filters icon inside search */
+.searchBarBtn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    color: var(--fg);
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.searchBarBtnActive {
+    outline: 2px solid var(--chip-border);
+}
+
+/* Table */
+.table {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.thead,
+.trow {
+    display: grid;
+    grid-template-columns: 120px 1fr 1.4fr 0.8fr 0.8fr 1.1fr;
+    gap: 10px;
+    padding: 10px 12px;
+}
+
+.thead {
+    background: var(--thead);
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.trow {
+    border-top: 1px solid var(--row-border);
+    font-size: 14px;
+}
+
+.trow:hover {
+    filter: brightness(1.03);
+}
+
+.empty {
+    padding: 14px;
+    color: var(--muted);
+}
+
+/* Filters */
+.filtersPanel {
+    display: grid;
+    gap: 12px;
+}
+
+.filtersAdvanced {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 140px auto;
+    gap: 12px;
+    align-items: end;
+}
+
+/* Errors */
+.error {
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin: 12px 0;
+}
+
+/* Thought bubble */
+.thoughtBubble {
+    position: relative;
+    margin: 14px 0 10px 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.thoughtBubbleText {
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    padding: 10px 14px;
+    border-radius: 999px;
+    color: var(--fg);
+    font-weight: 700;
+    position: relative;
+}
+
+.thoughtBubbleText::after {
+    content: "";
+    position: absolute;
+    left: 18px;
+    bottom: -10px;
+    width: 14px;
+    height: 14px;
+    background: var(--chip);
+    border-right: 1px solid var(--chip-border);
+    border-bottom: 1px solid var(--chip-border);
+    transform: rotate(45deg);
+}
+
+/* Modal */
+.modalBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    z-index: 90;
+}
+
+.modal {
+    width: min(720px, 100%);
+    background: var(--card);
+    border-radius: 14px;
+    padding: 16px;
+    border: 1px solid var(--border);
+}
+
+/* A11y */
+.srOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+}
+
+/* Empty state */
+.emptyState {
+    position: relative;
+    padding: 28px 16px 30px 16px;
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+    margin-top: 14px;
+    text-align: center;
+}
+
+.emptyStatePop {
+    pointer-events: none;
+    animation: emptyFadeOut 420ms ease forwards;
+}
+
+@keyframes emptyFadeOut {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    60% {
+        opacity: 1;
+        transform: scale(1.01);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+}
+
+.emptyFace {
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+
+.emptyTitle {
+    font-size: 18px;
+    font-weight: 800;
+    margin-top: 0;
+}
+
+.emptySub {
+    color: var(--muted);
+    margin-top: 8px;
+}
+
+/* Fullscreen arrow overlay */
+.emptyArrowOverlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 60;
+    color: var(--muted);
+}
+
+/* Wrapper group: wobble moves BOTH shaft + head */
+.emptyArrowGroup {
+    transform-origin: center;
+    animation: arrowWobble 1.35s ease-in-out 620ms infinite;
+}
+
+/* Shared stroke style */
+.emptyArrowShaft,
+.emptyArrowHead {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 3.1;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.95;
+    filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
+}
+
+/* Shaft draws first */
+.emptyArrowShaftDraw {
+    stroke-dasharray: var(--dash);
+    stroke-dashoffset: var(--dash);
+    animation: arrowDraw 620ms var(--ease-swoop) forwards;
+}
+
+/* Head draws AFTER shaft */
+.emptyArrowHeadDraw {
+    stroke-dasharray: var(--dash);
+    stroke-dashoffset: var(--dash);
+    opacity: 0.95;
+    animation:
+        headDraw 220ms var(--ease-swoop) forwards,
+        headIn 220ms var(--ease-swoop) forwards;
+    animation-delay: 620ms, 620ms;
+}
+
+@keyframes arrowDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes headDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes headIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.96);
+        transform-origin: center;
+    }
+    100% {
+        opacity: 0.95;
+        transform: scale(1);
+    }
+}
+
+/* scribbly wobble */
+@keyframes arrowWobble {
+    0%,
+    100% {
+        transform: translate(0, 0) rotate(0deg);
+    }
+    20% {
+        transform: translate(-0.8px, 0.35px) rotate(-0.55deg);
+    }
+    45% {
+        transform: translate(0.6px, -0.55px) rotate(0.7deg);
+    }
+    70% {
+        transform: translate(-0.45px, -0.25px) rotate(-0.35deg);
+    }
+}
+
+/* Pop when first user appears */
+.emptyArrowPop .emptyArrowGroup {
+    animation:
+        arrowPop 420ms var(--ease-swoop),
+        arrowWobble 1.35s ease-in-out infinite;
+}
+
+.emptyArrowPop .emptyArrowShaft,
+.emptyArrowPop .emptyArrowHead {
+    animation: arrowPopStroke 420ms var(--ease-swoop);
+}
+
+@keyframes arrowPop {
+    0% {
+        transform: scale(1);
+    }
+    60% {
+        transform: scale(1.012);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes arrowPopStroke {
+    0% {
+        opacity: 0.75;
+        stroke-width: 3.1;
+    }
+    60% {
+        opacity: 1;
+        stroke-width: 4;
+    }
+    100% {
+        opacity: 0.95;
+        stroke-width: 3.1;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .iconBtnPulse,
+    .emptyArrowGroup,
+    .emptyArrowShaftDraw,
+    .emptyArrowHeadDraw,
+    .emptyArrowPop .emptyArrowGroup {
+        animation: none !important;
+    }
+
+    .emptyArrowShaftDraw,
+    .emptyArrowHeadDraw {
+        stroke-dasharray: 0 !important;
+        stroke-dashoffset: 0 !important;
+        opacity: 1 !important;
+    }
+}
+
+/* ---------------------------
+   NewFloatingMenu
+   (expands from bottom-left, collapses to top-right)
+---------------------------- */
+
+.newMenuWrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.menuAnchor {
+    display: contents;
+}
+
+.floatingMenu {
+    position: absolute;
+    top: calc(100% + 10px);
+    min-width: 210px;
+
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px;
+
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+
+    opacity: 0;
+    transform: translate(0, -8px) scale(0.94);
+
+    transform-origin: 0% 100%;
+    pointer-events: none;
+
+    transition:
+        transform 180ms var(--ease-swoop),
+        opacity 180ms var(--ease-swoop);
+}
+
+.floatingMenuRight {
+    right: 0;
+}
+
+.floatingMenuLeft {
+    left: 0;
+}
+
+.floatingMenuOpen {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+    pointer-events: auto;
+}
+
+.floatingMenuClosing {
+    transform-origin: 100% 0%;
+    opacity: 0;
+    transform: translate(10px, -12px) scale(0.92);
+    pointer-events: none;
+}
+
+.menuItem {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    align-items: center;
+    gap: 10px;
+
+    padding: 10px 10px;
+    border: 1px solid transparent;
+    border-radius: 10px;
+
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    text-align: left;
+}
+
+.menuItem:hover {
+    background: var(--chip);
+    border-color: var(--chip-border);
+}
+
+.menuItemIcon {
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+}
+
+.menuItemDanger:hover {
+    background: var(--danger-bg);
+    border-color: var(--danger-border);
+}
+
+.menuItemLabel {
+    font-weight: 700;
+}
+
+/* ---------------------------
+   CreateUserMorph
+---------------------------- */
+
+.morphBackdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    pointer-events: none;
+    transition: background 180ms var(--ease-swoop);
+    z-index: 70;
+}
+
+.morphBackdropOpen {
+    background: rgba(0, 0, 0, 0.45);
+    pointer-events: auto;
+}
+
+.morphCard {
+    position: fixed;
+    left: var(--x, 0px);
+    top: var(--y, 0px);
+    width: var(--w, 0px);
+    height: var(--h, 0px);
+    border-radius: var(--r, 10px);
+    overflow: hidden;
+    z-index: 80;
+
+    transition:
+        left 220ms var(--ease-swoop),
+        top 220ms var(--ease-swoop),
+        width 220ms var(--ease-swoop),
+        height 220ms var(--ease-swoop),
+        border-radius 220ms var(--ease-swoop),
+        box-shadow 220ms var(--ease-swoop),
+        background 220ms var(--ease-swoop),
+        border-color 220ms var(--ease-swoop);
+}
+
+.morphCardCollapsed {
+    background: var(--chip);
+    border: 1px solid var(--chip-border);
+    box-shadow: none;
+}
+
+.morphCardExpanded {
+    background: var(--card);
+    border: 1px solid var(--border);
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+}
+
+.morphFace {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    transition: opacity 160ms var(--ease-swoop);
+    pointer-events: none;
+}
+
+.morphFaceShow {
+    opacity: 1;
+}
+
+.morphButtonFace {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: var(--fg);
+}
+
+.morphInner {
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 180ms var(--ease-swoop);
+    display: flex;
+    flex-direction: column;
+}
+
+.morphInnerOpen {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.morphHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 12px 10px 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.morphTitle {
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.morphSub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.morphCloseBtn {
+    border: 1px solid var(--chip-border);
+    background: var(--chip);
+    color: var(--fg);
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 160ms var(--ease-swoop);
+}
+
+.morphCloseBtn:hover {
+    transform: translateY(-1px);
+}
+
+.morphBody {
+    padding: 12px;
+    overflow: auto;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .topbar {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .topbarRight {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .thead,
+    .trow {
+        grid-template-columns: 100px 1fr 1fr;
+    }
+
+    .thead div:nth-child(n + 4),
+    .trow div:nth-child(n + 4) {
+        display: none;
+    }
+
+    .filtersAdvanced {
+        grid-template-columns: 1fr 1fr;
+    }
+}

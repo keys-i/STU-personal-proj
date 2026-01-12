@@ -1,30 +1,21 @@
 import "../shared.css";
-import { useId } from "react";
 
 type Props = {
   checked: boolean; // true = dark
   onChange: (checked: boolean) => void;
-  label?: string;
 };
 
-export function ThemeToggle({
-  checked,
-  onChange,
-  label = "Toggle theme",
-}: Props) {
-  const id = useId();
-
+export function ThemeToggle({ checked, onChange }: Props) {
   return (
     <div className="themeToggle">
       <input
-        id={id}
+        id="main-switch"
         className="themeToggle__input"
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        aria-label={label}
+        aria-label="Toggle theme"
       />
-
       <label className="themeToggle__label" htmlFor={id}>
         <span className="themeToggleMoon">
           <span className="themeToggleCrater crater1" />
