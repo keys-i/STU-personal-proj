@@ -1,0 +1,881 @@
+/* src/features/users/users.css
+   Scoped Users feature UI styles for:
+   - CreateUserForm
+   - CreateUserMorph
+   - EditUserModal
+   - EmptyUsersState
+   - NewFloatingMenu
+   - UsersFilters
+   - UsersTable
+*/
+
+/* ---------------------------
+   Shared layout helpers (scoped)
+---------------------------- */
+
+.usersView .card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+.usersView h2 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+
+.usersView .sub,
+.usersView .muted {
+  color: var(--muted);
+}
+
+.usersView .small {
+  font-size: 12px;
+}
+
+.usersView .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.usersView .row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.usersView .space-between {
+  justify-content: space-between;
+}
+
+/* Inputs */
+.usersView label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--fg);
+}
+
+.usersView input,
+.usersView select {
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  background: transparent;
+  color: var(--fg);
+}
+
+/* Buttons */
+.usersView button {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--chip);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.usersView button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.usersView button.danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.usersView .chip {
+  border-color: var(--chip-border);
+}
+
+/* Reusable icon button */
+.usersView .iconBtn {
+  width: 96px;
+  min-width: 96px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--chip-border);
+  background: var(--chip);
+  padding: 10px 12px;
+  border-radius: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.usersView .iconBtn span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.usersView .iconBtn svg {
+  display: block;
+}
+
+.usersView .iconBtnActive {
+  outline: 2px solid var(--chip-border);
+}
+
+.usersView .iconBtnPulse {
+  animation: usersPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes usersPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* ---------------------------
+   Users Topbar + Search
+---------------------------- */
+
+.usersView .topbar {
+  display: grid;
+  grid-template-columns: 1fr minmax(360px, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin: 18px 0 14px 0;
+}
+
+.usersView .topbarLeft {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.usersView .topbarRight {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+/* Brand: larger + more presence */
+.usersView .brandTitle {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+}
+
+.usersView .brandSub {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.usersView .topbarCenter {
+  width: 100%;
+  min-width: 0;
+  max-width: 760px;
+  margin: 0 auto;
+
+  /* keep search and NEW on the same row (desktop/tablet) */
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Theme toggle stays inline; don’t force it centered vertically */
+.usersView .topbarCenter .themeToggle {
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* Search bar */
+.usersView .searchBar {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.usersView .searchBarIcon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.usersView .searchBar input {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 54px 12px 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+}
+
+/* Filters icon inside search */
+.usersView .searchBarBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 1px solid var(--chip-border);
+  background: var(--chip);
+  color: var(--fg);
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.usersView .searchBarBtnActive {
+  outline: 2px solid var(--chip-border);
+}
+
+/* ---------------------------
+   Users Table
+---------------------------- */
+
+.usersView .table {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.usersView .thead,
+.usersView .trow {
+  display: grid;
+  grid-template-columns: 120px 1fr 1.4fr 0.8fr 0.8fr 1.1fr;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.usersView .thead {
+  background: var(--thead);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.usersView .trow {
+  border-top: 1px solid var(--row-border);
+  font-size: 14px;
+}
+
+.usersView .trow:hover {
+  filter: brightness(1.03);
+}
+
+.usersView .empty {
+  padding: 14px;
+  color: var(--muted);
+}
+
+/* ---------------------------
+   Users Filters
+---------------------------- */
+
+.usersView .filtersPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.usersView .filtersAdvanced {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 140px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+/* ---------------------------
+   Errors
+---------------------------- */
+
+.usersView .error {
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-border);
+  padding: 10px 12px;
+  border-radius: 12px;
+  margin: 12px 0;
+}
+
+/* ---------------------------
+   Thought bubble
+---------------------------- */
+
+.usersView .thoughtBubble {
+  position: relative;
+  margin: 14px 0 10px 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.usersView .thoughtBubbleText {
+  background: var(--chip);
+  border: 1px solid var(--chip-border);
+  padding: 10px 14px;
+  border-radius: 999px;
+  color: var(--fg);
+  font-weight: 700;
+  position: relative;
+}
+
+.usersView .thoughtBubbleText::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  bottom: -10px;
+  width: 14px;
+  height: 14px;
+  background: var(--chip);
+  border-right: 1px solid var(--chip-border);
+  border-bottom: 1px solid var(--chip-border);
+  transform: rotate(45deg);
+}
+
+/* ---------------------------
+   EditUserModal
+---------------------------- */
+
+.usersView .modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 90;
+}
+
+.usersView .modal {
+  width: min(720px, 100%);
+  background: var(--card);
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+
+/* A11y helper */
+.usersView .srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* ---------------------------
+   EmptyUsersState
+---------------------------- */
+
+.usersView .emptyState {
+  position: relative;
+
+  /* Responsive “big enough”: scales with viewport width */
+  width: min(980px, 100%);
+  margin: 14px auto 0 auto;
+
+  padding: clamp(18px, 3.6vw, 34px) clamp(14px, 3vw, 28px);
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.usersView .emptyStatePop {
+  pointer-events: none;
+  animation: usersEmptyFadeOut 420ms ease forwards;
+}
+
+@keyframes usersEmptyFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.usersView .emptyFace {
+  font-size: clamp(38px, 7vw, 54px);
+  font-weight: 900;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.usersView .emptyTitle {
+  font-size: clamp(16px, 2.2vw, 20px);
+  font-weight: 800;
+  margin-top: 0;
+}
+
+.usersView .emptySub {
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: clamp(13px, 1.8vw, 15px);
+}
+
+/* Fullscreen arrow overlay */
+.usersView .emptyArrowOverlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  color: var(--muted);
+}
+
+/* Wobble group */
+.usersView .emptyArrowGroup {
+  transform-origin: center;
+  animation: usersArrowWobble 1.35s ease-in-out 620ms infinite;
+}
+
+.usersView .emptyArrowShaft,
+.usersView .emptyArrowHead {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3.1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.95;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.12));
+}
+
+.usersView .emptyArrowShaftDraw {
+  stroke-dasharray: var(--dash);
+  stroke-dashoffset: var(--dash);
+  animation: usersArrowDraw 620ms var(--ease-swoop) forwards;
+}
+
+.usersView .emptyArrowHeadDraw {
+  stroke-dasharray: var(--dash);
+  stroke-dashoffset: var(--dash);
+  opacity: 0.95;
+  animation:
+    usersHeadDraw 220ms var(--ease-swoop) forwards,
+    usersHeadIn 220ms var(--ease-swoop) forwards;
+  animation-delay: 620ms, 620ms;
+}
+
+@keyframes usersArrowDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes usersHeadDraw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes usersHeadIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+    transform-origin: center;
+  }
+  100% {
+    opacity: 0.95;
+    transform: scale(1);
+  }
+}
+
+@keyframes usersArrowWobble {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    transform: translate(-0.8px, 0.35px) rotate(-0.55deg);
+  }
+  45% {
+    transform: translate(0.6px, -0.55px) rotate(0.7deg);
+  }
+  70% {
+    transform: translate(-0.45px, -0.25px) rotate(-0.35deg);
+  }
+}
+
+.usersView .emptyArrowPop .emptyArrowGroup {
+  animation:
+    usersArrowPop 420ms var(--ease-swoop),
+    usersArrowWobble 1.35s ease-in-out infinite;
+}
+
+.usersView .emptyArrowPop .emptyArrowShaft,
+.usersView .emptyArrowPop .emptyArrowHead {
+  animation: usersArrowPopStroke 420ms var(--ease-swoop);
+}
+
+@keyframes usersArrowPop {
+  0% {
+    transform: scale(1);
+  }
+  60% {
+    transform: scale(1.012);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes usersArrowPopStroke {
+  0% {
+    opacity: 0.75;
+    stroke-width: 3.1;
+  }
+  60% {
+    opacity: 1;
+    stroke-width: 4;
+  }
+  100% {
+    opacity: 0.95;
+    stroke-width: 3.1;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .usersView .iconBtnPulse,
+  .usersView .emptyArrowGroup,
+  .usersView .emptyArrowShaftDraw,
+  .usersView .emptyArrowHeadDraw,
+  .usersView .emptyArrowPop .emptyArrowGroup {
+    animation: none !important;
+  }
+
+  .usersView .emptyArrowShaftDraw,
+  .usersView .emptyArrowHeadDraw {
+    stroke-dasharray: 0 !important;
+    stroke-dashoffset: 0 !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ---------------------------
+   NewFloatingMenu
+   (opens from NEW button area, collapses to top-right)
+---------------------------- */
+
+/* Put button + menu under this wrapper */
+.usersView .newMenuWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* keep this wrapper from affecting layout */
+.usersView .menuAnchor {
+  display: contents;
+}
+
+/* Menu base */
+.usersView .floatingMenu {
+  position: absolute;
+  top: calc(100% + 10px);
+  min-width: 210px;
+
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+
+  opacity: 0;
+  transform: translate(0, -8px) scale(0.94);
+  transform-origin: 0% 100%;
+  pointer-events: none;
+
+  transition:
+    transform 180ms var(--ease-swoop),
+    opacity 180ms var(--ease-swoop);
+}
+
+/* Alignment */
+.usersView .floatingMenuRight {
+  right: 0;
+}
+.usersView .floatingMenuLeft {
+  left: 0;
+}
+
+/* Open */
+.usersView .floatingMenuOpen {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(0, 0) scale(1);
+}
+
+.usersView .floatingMenuLeft.floatingMenuOpen {
+  transform-origin: 0% 0%;
+}
+.usersView .floatingMenuRight.floatingMenuOpen {
+  transform-origin: 100% 0%;
+}
+
+/* Closing */
+.usersView .floatingMenuClosing {
+  transform-origin: 100% 0%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(10px, -14px) scale(0.78);
+  transition:
+    transform 200ms var(--ease-swoop),
+    opacity 120ms var(--ease-swoop);
+}
+
+/* Items */
+.usersView .menuItem {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: center;
+  gap: 10px;
+
+  padding: 10px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+}
+
+.usersView .menuItem:hover {
+  background: var(--chip);
+  border-color: var(--chip-border);
+}
+
+.usersView .menuItemIcon {
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.usersView .menuItemDanger:hover {
+  background: var(--danger-bg);
+  border-color: var(--danger-border);
+}
+
+.usersView .menuItemLabel {
+  font-weight: 700;
+}
+
+/* ---------------------------
+   CreateUserMorph
+---------------------------- */
+
+.usersView .morphBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  pointer-events: none;
+  transition: background 180ms var(--ease-swoop);
+  z-index: 70;
+}
+
+.usersView .morphBackdropOpen {
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.usersView .morphCard {
+  position: fixed;
+  left: var(--x, 0px);
+  top: var(--y, 0px);
+  width: var(--w, 0px);
+  height: var(--h, 0px);
+  border-radius: var(--r, 10px);
+  overflow: hidden;
+  z-index: 80;
+
+  transition:
+    left 220ms var(--ease-swoop),
+    top 220ms var(--ease-swoop),
+    width 220ms var(--ease-swoop),
+    height 220ms var(--ease-swoop),
+    border-radius 220ms var(--ease-swoop),
+    box-shadow 220ms var(--ease-swoop),
+    background 220ms var(--ease-swoop),
+    border-color 220ms var(--ease-swoop);
+}
+
+.usersView .morphCardCollapsed {
+  background: var(--chip);
+  border: 1px solid var(--chip-border);
+  box-shadow: none;
+}
+
+.usersView .morphCardExpanded {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+}
+
+/* Face overlay (collapsed button visual) */
+.usersView .morphFace {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 160ms var(--ease-swoop);
+}
+
+.usersView .morphFaceShow {
+  opacity: 1;
+}
+
+.usersView .morphButtonFace {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--chip-border);
+  background: var(--chip);
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--fg);
+}
+
+/* Inner fills card; body owns remaining space */
+.usersView .morphInner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms var(--ease-swoop);
+}
+
+.usersView .morphInnerOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.usersView .morphHeader {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.usersView .morphTitle {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.usersView .morphSub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* Body takes remaining height */
+.usersView .morphBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 12px;
+  overflow: auto;
+}
+
+/* ---------------------------
+   Responsive rules
+---------------------------- */
+
+/* <= 900px: stack layout but keep topbar usable */
+@media (max-width: 900px) {
+  .usersView .topbar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .usersView .topbarCenter {
+    max-width: 100%;
+    justify-content: center;
+  }
+
+  .usersView .topbarRight {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .usersView .thead,
+  .usersView .trow {
+    grid-template-columns: 100px 1fr 1fr;
+  }
+
+  .usersView .thead div:nth-child(n + 4),
+  .usersView .trow div:nth-child(n + 4) {
+    display: none;
+  }
+
+  .usersView .filtersAdvanced {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* <= 520px: wrap toggle + search, make NEW full-width if needed */
+@media (max-width: 520px) {
+  .usersView .topbarCenter {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .usersView .topbarCenter .themeToggle {
+    order: 0;
+  }
+
+  .usersView .searchBar {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .usersView .iconBtn {
+    width: 100%;
+    max-width: 240px;
+  }
+
+  .usersView .topbarRight {
+    width: 100%;
+  }
+}
+
+/* <= 360px: reduce paddings slightly */
+@media (max-width: 360px) {
+  .usersView .card {
+    padding: 14px;
+  }
+
+  .usersView .searchBar input {
+    padding: 11px 50px 11px 38px;
+  }
+
+  .usersView .iconBtn {
+    max-width: 100%;
+  }
+}

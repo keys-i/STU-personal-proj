@@ -1,0 +1,39 @@
+# deps installer
+FROM node:25-alpine AS deps
+WORKDIR /app/stu-frontend
+
+RUN apk add --no-cache libc6-compat
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+# builder
+FROM node:25-alpine AS build
+WORKDIR /app/stu-frontend
+
+RUN apk add --no-cache libc6-compat
+
+COPY --from=deps /app/stu-frontend/node_modules ./node_modules
+COPY frontend/ ./
+
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+
+RUN npm run build
+
+# runtime (static file server)
+FROM node:25-alpine AS runtime
+WORKDIR /app/stu-frontend
+
+ENV NODE_ENV=production
+ENV PORT=5173
+
+# Option A: serve with Vite preview (simple, fine for practice)
+RUN npm i -g vite
+
+COPY --from=build /app/stu-frontend/package.json ./package.json
+COPY --from=build /app/stu-frontend/dist ./dist
+
+EXPOSE 5173
+
+CMD ["sh", "-c", "vite preview --host 0.0.0.0 --port ${PORT}"]
