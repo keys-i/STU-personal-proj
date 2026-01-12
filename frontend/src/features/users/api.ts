@@ -90,7 +90,7 @@ export async function listUsers(args: {
 }
 
 export async function getUser(id: string): Promise<User> {
-  const res = await api.get<User>(`/users/${id}`);
+  const res = await api.get<User>(`/users/${encodeURIComponent(id)}`);
   return res.data;
 }
 
@@ -103,10 +103,10 @@ export async function updateUser(
   id: string,
   input: UpdateUserInput,
 ): Promise<User> {
-  const res = await api.patch<User>(`/users/${id}`, input);
+  const res = await api.patch<User>(`/users/${encodeURIComponent(id)}`, input);
   return res.data;
 }
 
 export async function softDeleteUser(id: string): Promise<void> {
-  await api.delete<void>(`/users/${id}`);
+  await api.delete<void>(`/users/${encodeURIComponent(id)}`);
 }

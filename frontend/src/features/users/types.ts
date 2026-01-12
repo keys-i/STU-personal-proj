@@ -12,16 +12,18 @@ export type User = {
   deletedAt: string | null; // ISO | null
 };
 
+export type PaginationMeta = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+};
+
 export type Paginated<T> = {
   data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
+  meta: PaginationMeta;
 };
 
 export type CreateUserInput = {
