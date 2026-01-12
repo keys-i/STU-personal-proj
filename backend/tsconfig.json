@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
-    "resolvePackageJsonExports": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "resolvePackageJsonExports": false,
+    "resolvePackageJsonImports": false,
 
     "target": "ES2023",
     "outDir": "./dist",
@@ -19,7 +20,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
 
-    "isolatedModules": true,
+    "isolatedModules": false,
 
     "declaration": false,
     "removeComments": false,
@@ -29,15 +30,6 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
 
-    "types": ["jest", "node"],
-  },
-  "include": [
-    "src/**/*.ts",
-    "test/**/*.ts",
-    "prisma**/*.ts",
-    "prisma.config.ts",
-    "eslint.config.ts",
-    "jest.config.ts",
-  ],
-  "exclude": ["dist", "node_modules", "coverage"],
+    "types": ["jest", "node"]
+  }
 }

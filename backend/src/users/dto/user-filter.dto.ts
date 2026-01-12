@@ -6,7 +6,8 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { UserStatus } from './user-status.enum.js';
+
+import { UserStatus } from './user-status.enum';
 
 export class UserFilterDto {
   @ApiPropertyOptional({ maxLength: 100, example: 'jo' })

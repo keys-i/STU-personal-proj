@@ -4,31 +4,22 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service.js';
-import { type User, Prisma } from '../../generated/prisma/client.js';
-import type { UserFilterDto, CreateUserDto, UpdateUserDto } from './dto/dto.js';
 
-export type Paginated<T> = {
-  data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-};
+import { PrismaService } from '../../prisma/prisma.service';
+import { type User, Prisma } from '../../generated/prisma/client';
+import { UserFilterDto, CreateUserDto, UpdateUserDto } from './dto';
+import { Paginated } from 'src/types';
 
 @Injectable()
 export class UserService {
-  /* istanbul ignore next */ constructor(
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async getUser(id: string): Promise<User> {
     const user = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
+      where: {
+        id,
+        deletedAt: null,
+      },
     });
 
     if (!user) throw new NotFoundException(`User ${id} not found`);
@@ -51,12 +42,16 @@ export class UserService {
     const where = this.buildWhere(filter);
 
     const [total, data] = await this.prisma.$transaction([
-      this.prisma.user.count({ where }),
+      this.prisma.user.count({
+        where,
+      }),
       this.prisma.user.findMany({
         where,
         skip,
         take: safeLimit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: {
+          createdAt: 'desc',
+        },
       }),
     ]);
 
@@ -162,7 +157,10 @@ export class UserService {
           );
         }
 
-        return { user: existing, created: false };
+        return {
+          user: existing,
+          created: false,
+        };
       }
 
       throw e;
@@ -171,8 +169,13 @@ export class UserService {
 
   async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
     const existing = await this.prisma.user.findFirst({
-      where: { id, deletedAt: null },
-      select: { id: true },
+      where: {
+        id,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+      },
     });
 
     if (!existing) throw new NotFoundException(`User ${id} not found`);
@@ -202,15 +205,24 @@ export class UserService {
 
   async softDeleteUser(id: string): Promise<void> {
     const result = await this.prisma.user.updateMany({
-      where: { id, deletedAt: null },
-      data: { deletedAt: new Date() },
+      where: {
+        id,
+        deletedAt: null,
+      },
+      data: {
+        deletedAt: new Date(),
+      },
     });
 
     if (result.count > 0) return;
 
     const exists = await this.prisma.user.findUnique({
-      where: { id },
-      select: { id: true },
+      where: {
+        id,
+      },
+      select: {
+        id: true,
+      },
     });
 
     if (!exists) throw new NotFoundException(`User ${id} not found`);

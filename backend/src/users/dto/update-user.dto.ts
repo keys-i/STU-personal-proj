@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEmail, IsEnum, IsOptional, IsString, Length } from 'class-validator';
-import { UserRole, UserStatus } from '../../../generated/prisma/client.js';
+
+import { UserRole, UserStatus } from '../../../generated/prisma/client';
 
 import {
   registerDecorator,

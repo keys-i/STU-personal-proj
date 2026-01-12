@@ -11,16 +11,16 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { HttpStatus } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 
-import { UsersController } from './users.controller.js';
-import { UserService, type Paginated } from './users.service.js';
+import { UsersController } from './users.controller';
+import { UserService, type Paginated } from './users.service';
 import {
   type CreateUserDto,
   type ListUsersQueryDto,
   type IdParamDto,
   type UpdateUserDto,
   UserStatus,
-} from './dto/dto.js';
-import type { User } from '../../generated/prisma/client.js';
+} from './dto/index';
+import type { User } from '../../generated/prisma/client';
 
 type UsersServiceSubset = Pick<
   UserService,

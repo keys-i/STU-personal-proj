@@ -1,5 +1,4 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import {
   FastifyAdapter,
@@ -7,11 +6,15 @@ import {
 } from '@nestjs/platform-fastify';
 import { ValidationPipe } from '@nestjs/common';
 
+import { AppModule } from './app.module.js';
+
 async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter(),
-    { logger: ['error', 'warn', 'log', 'debug', 'verbose'] },
+    {
+      logger: ['error', 'warn', 'log', 'debug', 'verbose'],
+    },
   );
 
   app.useGlobalPipes(
@@ -40,6 +43,7 @@ async function bootstrap() {
   await app.listen({ port, host: '0.0.0.0' });
 
   console.log(`Application is running on: ${await app.getUrl()}`);
+  console.log(`Documentation is running on: ${await app.getUrl()}/api`);
 
   // TODO: Hot reload
 }

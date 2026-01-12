@@ -1,5 +1,5 @@
 import { Controller, Get, HttpStatus } from '@nestjs/common';
-import { AppService, type HealthResponse } from './app.service.js';
+import { AppService, type HealthResponse } from './app.service';
 import {
   ApiOkResponse,
   ApiOperation,

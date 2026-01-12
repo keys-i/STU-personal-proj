@@ -23,13 +23,14 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { UserService } from './users.service.js';
+
+import { UserService } from './users.service';
 import {
   CreateUserDto,
   ListUsersQueryDto,
   IdParamDto,
   UpdateUserDto,
-} from './dto/dto.js';
+} from './dto';
 
 @Controller('users')
 export class UsersController {

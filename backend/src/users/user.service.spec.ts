@@ -9,8 +9,12 @@ import {
 import { UserService } from './users.service.js';
 import type { PrismaService } from '../../prisma/prisma.service.js';
 import { Prisma, type User } from '../../generated/prisma/client.js';
-import type { CreateUserDto, UpdateUserDto, UserFilterDto } from './dto/dto.js';
-import { UserStatus } from './dto/dto.js';
+import type {
+  CreateUserDto,
+  UpdateUserDto,
+  UserFilterDto,
+} from './dto/index.js';
+import { UserStatus } from './dto/index.js';
 
 type PrismaMock = {
   user: {

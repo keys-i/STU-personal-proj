@@ -9,7 +9,7 @@ import {
   ListUsersQueryDto,
   UserFilterDto,
   UserStatus,
-} from './dto.js';
+} from './index.js';
 
 async function expectValid<T extends object>(cls: new () => T, plain: object) {
   const inst = plainToInstance(cls, plain);

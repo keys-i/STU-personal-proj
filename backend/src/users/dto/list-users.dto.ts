@@ -1,7 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsInt, IsOptional, Max, Min, ValidateNested } from 'class-validator';
-import { UserFilterDto } from './user-filter.dto.js';
+
+import { UserFilterDto } from './user-filter.dto';
 
 export class ListUsersQueryDto {
   @ApiPropertyOptional({ default: 1, minimum: 1 })
