@@ -23,12 +23,18 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
+
 import { UserService } from './users.service.js';
 import {
   CreateUserDto,
   ListUsersQueryDto,
   IdParamDto,
   UpdateUserDto,
+  ErrorResponseDto,
+  OkResponseDto,
+  PaginatedResponseDto,
+  UserResponseDto,
+  toUserResponseDto,
 } from './dto/dto.js';
 
 @Controller('users')
@@ -84,13 +90,22 @@ export class UsersController {
   @ApiOkResponse({
     description:
       'Paginated users. Soft-deleted excluded by default (deletedAt IS NULL).',
+    type: PaginatedResponseDto<UserResponseDto>,
   })
   @ApiBadRequestResponse({
     description:
       'Validation error (page/limit invalid, bad ISO dates, fromDate > toDate).',
+    type: ErrorResponseDto,
   })
-  async getAllUsers(@Query() q: ListUsersQueryDto) {
-    return await this.users.listUsers(q.page, q.limit, q.filter);
+  async getAllUsers(
+    @Query() q: ListUsersQueryDto,
+  ): Promise<PaginatedResponseDto<UserResponseDto>> {
+    const res = await this.users.listUsers(q.page, q.limit, q.filter);
+
+    return {
+      data: res.data.map(toUserResponseDto),
+      meta: res.meta,
+    };
   }
 
   @Get(':id')
@@ -100,32 +115,53 @@ export class UsersController {
     description: 'User ID (UUID)',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @ApiOkResponse({ description: 'User found (not soft-deleted).' })
+  @ApiOkResponse({
+    description: 'User found (not soft-deleted).',
+    type: OkResponseDto<UserResponseDto>,
+  })
   @ApiNotFoundResponse({
     description: 'User not found (missing or soft-deleted).',
+    type: ErrorResponseDto,
   })
-  @ApiBadRequestResponse({ description: 'Validation error (id must be UUID).' })
-  async getUser(@Param() p: IdParamDto) {
-    return await this.users.getUser(p.id);
+  @ApiBadRequestResponse({
+    description: 'Validation error (id must be UUID).',
+    type: ErrorResponseDto,
+  })
+  async getUser(
+    @Param() p: IdParamDto,
+  ): Promise<OkResponseDto<UserResponseDto>> {
+    const u = await this.users.getUser(p.id);
+    return { data: toUserResponseDto(u) };
   }
 
   @Post()
   @ApiOperation({ summary: 'Create user (idempotent by email)' })
-  @ApiCreatedResponse({ description: 'User created (first time)' })
+  @ApiCreatedResponse({
+    description: 'User created (first time)',
+    type: OkResponseDto<UserResponseDto>,
+  })
   @ApiOkResponse({
     description: 'User already exists (returned existing user)',
+    type: OkResponseDto<UserResponseDto>,
   })
-  @ApiBadRequestResponse({ description: 'Validation failed' })
-  @ApiConflictResponse({ description: 'Email exists but user is soft-deleted' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed',
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Email exists but user is soft-deleted',
+    type: ErrorResponseDto,
+  })
   async createUser(
     @Body() body: CreateUserDto,
     @Res({ passthrough: true }) reply: FastifyReply,
-  ) {
+  ): Promise<OkResponseDto<UserResponseDto>> {
     const { user, created } = await this.users.createUser(body);
 
     // 201 if created, 200 if returned existing
     reply.code(created ? HttpStatus.CREATED : HttpStatus.OK);
-    return user;
+
+    return { data: toUserResponseDto(user) };
   }
 
   @Patch(':id')
@@ -135,16 +171,28 @@ export class UsersController {
     format: 'uuid',
     example: '550e8400-e29b-41d4-a716-446655440000',
   })
-  @ApiOkResponse({ description: 'User updated' })
+  @ApiOkResponse({
+    description: 'User updated',
+    type: OkResponseDto<UserResponseDto>,
+  })
   @ApiBadRequestResponse({
     description: 'Validation failed or no fields provided',
+    type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found (missing or soft-deleted)',
+    type: ErrorResponseDto,
   })
-  @ApiConflictResponse({ description: 'Email already exists' })
-  async updateUser(@Param() p: IdParamDto, @Body() body: UpdateUserDto) {
-    return await this.users.updateUser(p.id, body);
+  @ApiConflictResponse({
+    description: 'Email already exists',
+    type: ErrorResponseDto,
+  })
+  async updateUser(
+    @Param() p: IdParamDto,
+    @Body() body: UpdateUserDto,
+  ): Promise<OkResponseDto<UserResponseDto>> {
+    const u = await this.users.updateUser(p.id, body);
+    return { data: toUserResponseDto(u) };
   }
 
   @Delete(':id')
@@ -152,9 +200,15 @@ export class UsersController {
   @ApiOperation({ summary: 'Soft delete user' })
   @ApiParam({ name: 'id', format: 'uuid' })
   @ApiNoContentResponse({ description: 'User deleted or already soft-deleted' })
-  @ApiNotFoundResponse({ description: 'User not found' })
-  @ApiBadRequestResponse({ description: 'Validation error (id must be UUID)' })
-  async deleteUser(@Param() p: IdParamDto) {
+  @ApiNotFoundResponse({
+    description: 'User not found',
+    type: ErrorResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description: 'Validation error (id must be UUID)',
+    type: ErrorResponseDto,
+  })
+  async deleteUser(@Param() p: IdParamDto): Promise<void> {
     await this.users.softDeleteUser(p.id);
   }
 }

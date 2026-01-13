@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 type Rect = { left: number; top: number; width: number; height: number };
 type ToLayout = { left: number; top: number; width: number; maxH: number };
@@ -16,19 +16,28 @@ type Props = {
   open: boolean;
   anchorRef: React.RefObject<HTMLElement | null>;
   onClose: () => void;
-  collapsedContent: React.ReactNode;
+
+  collapsedContent?: React.ReactNode;
+
+  // NEW
+  nudgeKey?: number; // bump to retrigger nod + bubble pop
+  errorMessage?: string | null;
+
   children: React.ReactNode;
   title: string;
   subtitle?: string;
 };
 
 const CLOSE_MS = 220;
+const NOD_MS = 380;
 
 export function CreateUserMorph({
   open,
   anchorRef,
   onClose,
   collapsedContent,
+  nudgeKey = 0,
+  errorMessage,
   children,
   title,
   subtitle,
@@ -40,6 +49,8 @@ export function CreateUserMorph({
   const rafRef = useRef<number>(0);
   const tokenRef = useRef(0);
   const showTimerRef = useRef<number | null>(null);
+
+  const [nod, setNod] = useState(false);
 
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -94,14 +105,26 @@ export function CreateUserMorph({
     if (!headerEl || !bodyEl || !card) return;
 
     const headerH = headerEl.getBoundingClientRect().height;
-    const bodyContentH = bodyEl.scrollHeight; // includes padding
+    const bodyContentH = bodyEl.scrollHeight;
     const want = headerH + bodyContentH;
 
     const fitted = clamp(Math.ceil(want), 160, Math.ceil(maxH));
     card.style.setProperty("--h", `${fitted}px`);
   };
 
-  // Hide anchor while open; show after collapse completes
+  const hasCollapsedFace = collapsedContent != null;
+
+  // NEW: trigger nod animation when nudgeKey changes while open
+  useEffect(() => {
+    if (!open) return;
+    if (prefersReducedMotion) return;
+
+    setNod(true);
+    const t = window.setTimeout(() => setNod(false), NOD_MS);
+    return () => window.clearTimeout(t);
+  }, [nudgeKey, open, prefersReducedMotion]);
+
+  // Hide anchor while open; show after collapse completes (overlay-only safe)
   useEffect(() => {
     const anchor = anchorRef.current;
     if (!anchor) return;
@@ -121,23 +144,26 @@ export function CreateUserMorph({
     if (open) {
       hideAnchor();
     } else {
-      hideAnchor();
-      showTimerRef.current = window.setTimeout(
-        () => {
-          showAnchor();
-          showTimerRef.current = null;
-        },
-        prefersReducedMotion ? 0 : CLOSE_MS,
-      );
+      if (hasCollapsedFace) {
+        hideAnchor();
+        showTimerRef.current = window.setTimeout(
+          () => {
+            showAnchor();
+            showTimerRef.current = null;
+          },
+          prefersReducedMotion ? 0 : CLOSE_MS,
+        );
+      } else {
+        showAnchor();
+      }
     }
 
     return () => {
       if (showTimerRef.current) window.clearTimeout(showTimerRef.current);
       showAnchor();
     };
-  }, [open, anchorRef, prefersReducedMotion]);
+  }, [open, anchorRef, prefersReducedMotion, hasCollapsedFace]);
 
-  // OPEN/CLOSE: set rect vars; when open, fit height to content (clamped)
   useLayoutEffect(() => {
     const anchor = anchorRef.current;
     const card = cardRef.current;
@@ -153,22 +179,18 @@ export function CreateUserMorph({
     if (open) {
       const to = computeToLayout(from);
 
-      // start at button rect (exact)
       applyVars(from.left, from.top, from.width, from.height, 10);
 
-      // next frame: expand to target rect, then fit height to content
       rafRef.current = requestAnimationFrame(() => {
         if (token !== tokenRef.current) return;
         applyVars(to.left, to.top, to.width, Math.min(280, to.maxH), 14);
 
-        // wait one more frame so layout settles before measuring scrollHeight
         requestAnimationFrame(() => {
           if (token !== tokenRef.current) return;
           measureAndFitHeight(to.maxH);
         });
       });
     } else {
-      // collapse back to button rect
       applyVars(from.left, from.top, from.width, from.height, 10);
     }
 
@@ -177,7 +199,6 @@ export function CreateUserMorph({
     };
   }, [open, anchorRef]);
 
-  // Keep aligned on resize/scroll while open (also refit height)
   useEffect(() => {
     if (!open) return;
 
@@ -189,7 +210,6 @@ export function CreateUserMorph({
       const to = computeToLayout(from);
 
       applyVars(to.left, to.top, to.width, Math.min(280, to.maxH), 14);
-      // fit height to content after positional update
       requestAnimationFrame(() => measureAndFitHeight(to.maxH));
     };
 
@@ -201,7 +221,6 @@ export function CreateUserMorph({
     };
   }, [open, anchorRef]);
 
-  // Also refit height if the form content changes size (validation errors, etc.)
   useEffect(() => {
     if (!open) return;
 
@@ -220,7 +239,6 @@ export function CreateUserMorph({
     return () => ro.disconnect();
   }, [open, anchorRef, children]);
 
-  // Click outside closes (keeps input because state is lifted in UsersView)
   return (
     <>
       <div
@@ -235,7 +253,7 @@ export function CreateUserMorph({
         ref={cardRef}
         className={`morphCard ${
           open ? "morphCardExpanded" : "morphCardCollapsed"
-        }`}
+        } ${nod ? "morphCardNod" : ""} ${open && errorMessage ? "morphCardError" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-hidden={!open}
@@ -243,7 +261,7 @@ export function CreateUserMorph({
         onMouseDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
-        {!open ? (
+        {!open && hasCollapsedFace ? (
           <div className="morphFace morphFaceShow">{collapsedContent}</div>
         ) : null}
 
@@ -254,6 +272,13 @@ export function CreateUserMorph({
               {subtitle ? <div className="morphSub">{subtitle}</div> : null}
             </div>
           </div>
+
+          {/* NEW: error banner INSIDE the box */}
+          {open && errorMessage ? (
+            <div key={nudgeKey} className="morphErrorBanner" role="alert">
+              {errorMessage}
+            </div>
+          ) : null}
 
           <div ref={bodyRef} className="morphBody">
             {children}

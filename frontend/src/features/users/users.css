@@ -254,15 +254,18 @@
 .usersView .thead,
 .usersView .trow {
   display: grid;
-  grid-template-columns: 120px 1fr 1.4fr 0.8fr 0.8fr 1.1fr;
-  gap: 10px;
-  padding: 10px 12px;
+
+  grid-template-columns: 1.35fr 1.7fr 0.8fr 0.8fr 1.05fr;
+
+  gap: clamp(12px, 1.2vw, 20px);
+  padding: clamp(12px, 1.25vw, 22px) clamp(14px, 1.4vw, 26px);
+  align-items: center;
 }
 
 .usersView .thead {
   background: var(--thead);
   font-weight: 700;
-  font-size: 12px;
+  font-size: clamp(11px, 0.85vw, 13px);
 }
 
 .usersView .trow {
@@ -277,6 +280,71 @@
 .usersView .empty {
   padding: 14px;
   color: var(--muted);
+}
+
+@media (min-width: 1100px) {
+  .usersView .thead,
+  .usersView .trow {
+    grid-template-columns: 1.7fr 2.6fr 1fr 1fr 1.3fr;
+    padding: 18px 22px;
+    gap: 18px;
+  }
+
+  .usersView .trow {
+    min-height: 76px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .usersView .thead,
+  .usersView .trow {
+    grid-template-columns: 2.1fr 3.2fr 1.1fr 1.1fr 1.4fr;
+    padding: 20px 26px;
+    gap: 22px;
+  }
+
+  .usersView .trow {
+    min-height: 86px;
+  }
+}
+
+@media (max-width: 900px) {
+  .usersView .trow {
+    min-height: 62px;
+    font-size: 14px;
+  }
+}
+
+/* <= 520px: tighter */
+@media (max-width: 520px) {
+  .usersView .thead,
+  .usersView .trow {
+    padding: 12px 14px;
+    gap: 12px;
+  }
+
+  .usersView .trow {
+    min-height: 56px;
+    font-size: 13.5px;
+  }
+
+  .usersView .thead {
+    font-size: 11.5px;
+  }
+}
+
+/* <= 360px: tightest */
+@media (max-width: 360px) {
+  .usersView .thead,
+  .usersView .trow {
+    padding: 11px 12px;
+    gap: 10px;
+  }
+
+  .usersView .trow {
+    min-height: 52px;
+    font-size: 13px;
+  }
 }
 
 /* ---------------------------
@@ -804,6 +872,116 @@
 }
 
 /* ---------------------------
+   Swipe micro-feedback (UsersTableRow)
+---------------------------- */
+
+/* wrap each row: clips the behind layer */
+.usersView .swipeWrap {
+  position: relative;
+  overflow: hidden;
+}
+
+/* behind layer sits under the moving row */
+.usersView .swipeBehind {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: stretch;
+  pointer-events: none;
+
+  /* hidden until swiping */
+  opacity: 0;
+  transition: opacity 80ms linear;
+}
+
+.usersView .swipeWrap[data-swiping="true"] .swipeBehind {
+  opacity: 1;
+}
+
+/* reveal panels (their width is controlled inline from dx) */
+.usersView .swipeLeft,
+.usersView .swipeRight {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* Edit = yellow (right swipe reveals left panel) */
+.usersView .swipeLeft {
+  justify-content: flex-start;
+  background: #f4c84a; /* yellow */
+}
+
+/* Delete = red (left swipe reveals right panel) */
+.usersView .swipeRight {
+  margin-left: auto;
+  justify-content: flex-end;
+  background: #e04343; /* red */
+}
+
+/* action content inside reveal */
+.usersView .swipeAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.usersView .swipeIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.usersView .swipeText {
+  font-size: 14px;
+  line-height: 1;
+  transform-origin: left center;
+}
+
+/* readable text per background */
+.usersView .swipeActionEdit {
+  color: rgba(0, 0, 0, 0.82);
+}
+.usersView .swipeActionDelete {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+/* moving foreground row */
+.usersView .swipeRow {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+
+  /* allow vertical scroll; hook handles horizontal */
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+
+  will-change: transform;
+}
+
+/* subtle “lift” while swiping */
+.usersView .swipeWrap[data-swiping="true"] .swipeRow {
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .usersView .swipeBehind {
+    transition: none;
+  }
+  .usersView .swipeWrap[data-swiping="true"] .swipeRow {
+    box-shadow: none;
+  }
+}
+/* ---------------------------
    Responsive rules
 ---------------------------- */
 
@@ -826,7 +1004,7 @@
 
   .usersView .thead,
   .usersView .trow {
-    grid-template-columns: 100px 1fr 1fr;
+    grid-template-columns: 1.2fr 1.6fr 0.8fr 0.8fr 1.1fr;
   }
 
   .usersView .thead div:nth-child(n + 4),
@@ -836,6 +1014,12 @@
 
   .usersView .filtersAdvanced {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .usersView .thead,
+  .usersView .trow {
+    padding: 12px 14px;
+    gap: 12px;
   }
 }
 

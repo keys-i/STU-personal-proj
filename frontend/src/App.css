@@ -136,7 +136,7 @@ body {
 
 /* A reasonable container used by your UsersView */
 .container {
-  width: min(1080px, 100%);
+  width: min(1600px, 100%);
   margin: 0 auto;
   padding: clamp(12px, 2.2vw, 22px);
 }

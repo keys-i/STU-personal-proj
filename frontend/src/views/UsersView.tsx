@@ -224,10 +224,11 @@ export function UsersView() {
           <button
             ref={newBtnRef}
             type="button"
-            className={`iconBtn ${noUsers ? "iconBtnPulse" : ""}`}
+            className={`iconBtn parallaxBtn ${noUsers ? "iconBtnPulse" : ""}`}
             onClick={() => setCreateOpen(true)}
             title="Create user"
             aria-label="Create user"
+            style={{ visibility: createOpen ? "hidden" : "visible" }}
           >
             <PencilIcon />
             <span>New</span>
@@ -241,12 +242,7 @@ export function UsersView() {
         onClose={() => setCreateOpen(false)}
         title="Create user"
         subtitle="Quick add. Validates inputs."
-        collapsedContent={
-          <div className="morphButtonFace">
-            <PencilIcon />
-            <span>New</span>
-          </div>
-        }
+        collapsedContent={undefined} // or just omit the prop
       >
         <CreateUserForm
           value={createForm}

@@ -25,9 +25,12 @@
 -------------------------------------------------------- */
 
 .themeToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  /* 1 = current size, 0.7 = 70%, etc */
+  --tt-scale: 0.67;
+  --tt-w: calc(200px * var(--tt-scale));
+  --tt-h: calc(100px * var(--tt-scale));
+  --tt-r: calc(50px * var(--tt-scale));
+  --tt-pad: calc(5px * var(--tt-scale));
 }
 
 /* hide checkbox (accessible) */
@@ -41,8 +44,9 @@
 
 /* pill */
 .themeToggle__label {
-  width: 200px;
-  height: 100px;
+  width: var(--tt-w);
+  height: var(--tt-h);
+  border-radius: var(--tt-r);
   display: inline-block;
   border-radius: 50px;
   cursor: pointer;
@@ -56,10 +60,10 @@
 .themeToggleMoon {
   background: #f2f50e;
   width: 50%;
-  height: 90%;
+  height: calc(100% - (var(--tt-pad) * 2));
+  margin: var(--tt-pad);
   display: inline-block;
   border-radius: 50%;
-  margin: 5px;
 
   position: relative;
   z-index: 2;
@@ -85,60 +89,60 @@
   transition: all 400ms ease-in;
 }
 
-/* crater placements */
+/* craters */
 .themeToggleCrater.crater1 {
-  width: 20px;
-  height: 20px;
-  top: 40px;
-  left: 10px;
+  width: calc(20px * var(--tt-scale));
+  height: calc(20px * var(--tt-scale));
+  top: calc(40px * var(--tt-scale));
+  left: calc(10px * var(--tt-scale));
 }
 .themeToggleCrater.crater2 {
-  width: 10px;
-  height: 10px;
-  top: 20px;
-  left: 50px;
+  width: calc(10px * var(--tt-scale));
+  height: calc(10px * var(--tt-scale));
+  top: calc(20px * var(--tt-scale));
+  left: calc(50px * var(--tt-scale));
 }
 .themeToggleCrater.crater3 {
-  width: 30px;
-  height: 30px;
-  top: 40px;
-  left: 60px;
+  width: calc(30px * var(--tt-scale));
+  height: calc(30px * var(--tt-scale));
+  top: calc(40px * var(--tt-scale));
+  left: calc(60px * var(--tt-scale));
 }
 .themeToggleCrater.crater4 {
-  width: 5px;
-  height: 5px;
-  top: 70px;
-  left: 40px;
+  width: calc(5px * var(--tt-scale));
+  height: calc(5px * var(--tt-scale));
+  top: calc(70px * var(--tt-scale));
+  left: calc(40px * var(--tt-scale));
 }
 .themeToggleCrater.crater5 {
-  width: 15px;
-  height: 15px;
-  top: 6px;
-  left: 20px;
+  width: calc(15px * var(--tt-scale));
+  height: calc(15px * var(--tt-scale));
+  top: calc(6px * var(--tt-scale));
+  left: calc(20px * var(--tt-scale));
 }
 
 /* cloud placements (ray1/2/3 naming) */
 .themeToggleCloud.ray1 {
-  width: 50px;
-  height: 30px;
+  width: calc(50px * var(--tt-scale));
+  height: calc(30px * var(--tt-scale));
+  left: calc(40%);
   top: 50%;
-  left: 40%;
   border-radius: 50%;
   z-index: 1;
 }
 .themeToggleCloud.ray2 {
-  width: 60px;
-  height: 40px;
+  width: calc(60px * var(--tt-scale));
+  height: calc(40px * var(--tt-scale));
+  left: calc(-5%);
   top: 15%;
-  left: -5%;
   border-radius: 50%;
   z-index: 3;
 }
 .themeToggleCloud.ray3 {
-  width: 100px;
-  height: 40px;
+  width: calc(100px * var(--tt-scale));
+  height: calc(40px * var(--tt-scale));
   top: 75%;
-  left: 20%;
+  left: calc(20%);
   border-radius: 80%;
   z-index: 3;
 }
@@ -152,7 +156,7 @@
 
 /* moon slides right + changes color */
 .themeToggle__input:checked + .themeToggle__label > .themeToggleMoon {
-  transform: translate3d(90px, 0px, 0px) rotate(0deg);
+  transform: translate3d(calc(90px * var(--tt-scale)), 0px, 0px) rotate(0deg);
   background: #ebc815 !important;
 }
 

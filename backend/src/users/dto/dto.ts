@@ -4,3 +4,13 @@ export { IdParamDto } from './id-param.dto.js';
 export { UpdateUserDto } from './update-user.dto.js';
 export { UserFilterDto } from './user-filter.dto.js';
 export { UserStatus } from './user-status.enum.js';
+export {
+  ErrorResponseDto,
+  MetaDto,
+  PaginatedResponseDto,
+  OkResponseDto,
+} from './response/response.dto.js';
+export {
+  toUserResponseDto,
+  UserResponseDto,
+} from './response/user.response.dto.js';
