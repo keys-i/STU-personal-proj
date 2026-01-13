@@ -12,51 +12,53 @@ import { HttpStatus } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 
 import { UsersController } from './users.controller.js';
-import { UserService, type Paginated } from './users.service.js';
+import { UserService } from './users.service.js';
 import {
   type CreateUserDto,
   type ListUsersQueryDto,
   type IdParamDto,
   type UpdateUserDto,
   UserStatus,
+  type OkResponseDto,
+  type PaginatedUsersResponseDto,
+  type UserResponseDto,
 } from './dto/dto.js';
-import type { User } from '../../generated/prisma/client.js';
 
 type UsersServiceSubset = Pick<
   UserService,
   'listUsers' | 'getUser' | 'createUser' | 'updateUser' | 'softDeleteUser'
 >;
 
-const makeReplyStub = (): Pick<FastifyReply, 'code'> & {
-  code: jest.Mock<(c: number) => unknown>;
-} => ({
-  code: jest.fn<(c: number) => any>().mockReturnThis(),
-});
+const makeReplyStub = () => {
+  return {
+    code: jest.fn().mockReturnThis(),
+  };
+};
 
+type ReplyStub = ReturnType<typeof makeReplyStub>;
 const makeUpdateDto = (p: Omit<UpdateUserDto, '_atLeastOne'>): UpdateUserDto =>
   ({ ...p, _atLeastOne: true }) as UpdateUserDto;
 
-function makeUser(overrides: Partial<User> = {}): User {
-  const now = new Date('2026-01-01T00:00:00.000Z');
+function makeUserDto(
+  overrides: Partial<UserResponseDto> = {},
+): UserResponseDto {
   return {
     id: '550e8400-e29b-41d4-a716-446655440000',
     name: 'Jane',
     email: 'jane@example.com',
     status: UserStatus.ACTIVE,
     role: null,
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
+    createdAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
 }
 
-function makePaginated<T>(
-  data: T[],
+function makePaginatedUsersDto(
+  data: UserResponseDto[],
   page = 1,
   limit = 10,
   total = data.length,
-): Paginated<T> {
+): PaginatedUsersResponseDto {
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const pageClamped = Math.min(Math.max(1, page), totalPages);
 
@@ -123,9 +125,9 @@ describe('UsersController', () => {
       ],
     ];
 
-    it.each<[string, ListUsersQueryDto]>(cases)('%s', async (_name, q) => {
-      const u1 = makeUser({ id: 'u1' });
-      const result = makePaginated<User>([u1], q.page, q.limit, 1);
+    it.each(cases)('%s', async (_name, q) => {
+      const u1 = makeUserDto({ id: 'u1' });
+      const result = makePaginatedUsersDto([u1], q.page, q.limit, 1);
 
       usersSvc.listUsers.mockResolvedValue(result);
 
@@ -140,13 +142,14 @@ describe('UsersController', () => {
   });
 
   describe('getUser', () => {
-    it('calls service with id and returns User', async () => {
+    it('calls service with id and returns OkResponseDto<UserResponseDto>', async () => {
       const p = { id: 'u1' } satisfies IdParamDto;
-      const user = makeUser({ id: p.id });
+      const dto = makeUserDto({ id: p.id });
 
-      usersSvc.getUser.mockResolvedValue(user);
+      const result: OkResponseDto<UserResponseDto> = { data: dto };
+      usersSvc.getUser.mockResolvedValue(result);
 
-      await expect(controller.getUser(p)).resolves.toEqual(user);
+      await expect(controller.getUser(p)).resolves.toEqual(result);
       expect(usersSvc.getUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.getUser).toHaveBeenCalledWith(p.id);
     });
@@ -180,41 +183,38 @@ describe('UsersController', () => {
       ],
     ];
 
-    it.each<[string, CreateUserDto, number, boolean, string]>(cases)(
-      '%s',
-      async (_name, body, expectedCode, created, id) => {
-        const reply = makeReplyStub();
-        const user = makeUser({
-          id,
-          name: body.name,
-          email: body.email,
-          status: body.status,
-        });
+    it.each(cases)('%s', async (_name, body, expectedCode, created, id) => {
+      const reply: ReplyStub = makeReplyStub();
 
-        usersSvc.createUser.mockResolvedValue({ user, created });
+      const dto = makeUserDto({
+        id,
+        name: body.name,
+        email: body.email,
+        status: body.status,
+      });
 
-        await expect(
-          controller.createUser(body, reply as unknown as FastifyReply),
-        ).resolves.toEqual(user);
+      usersSvc.createUser.mockResolvedValue({ data: dto, created });
 
-        expect(usersSvc.createUser).toHaveBeenCalledTimes(1);
-        expect(usersSvc.createUser).toHaveBeenCalledWith(body);
-        expect(reply.code).toHaveBeenCalledWith(expectedCode);
-      },
-    );
+      await expect(
+        controller.createUser(body, reply as unknown as FastifyReply),
+      ).resolves.toEqual({ data: dto });
+
+      expect(usersSvc.createUser).toHaveBeenCalledWith(body);
+      expect(reply.code).toHaveBeenCalledWith(expectedCode);
+    });
   });
 
   describe('updateUser', () => {
-    it('calls service with id + body and returns updated User', async () => {
+    it('calls service with id + body and returns OkResponseDto<UserResponseDto>', async () => {
       const p = { id: 'u1' } satisfies IdParamDto;
       const body = makeUpdateDto({ name: 'New Name' });
 
-      const updatedUser = makeUser({ id: p.id, name: body.name ?? 'New Name' });
-      usersSvc.updateUser.mockResolvedValue(updatedUser);
+      const dto = makeUserDto({ id: p.id, name: 'New Name' });
+      const result: OkResponseDto<UserResponseDto> = { data: dto };
 
-      await expect(controller.updateUser(p, body)).resolves.toEqual(
-        updatedUser,
-      );
+      usersSvc.updateUser.mockResolvedValue(result);
+
+      await expect(controller.updateUser(p, body)).resolves.toEqual(result);
       expect(usersSvc.updateUser).toHaveBeenCalledTimes(1);
       expect(usersSvc.updateUser).toHaveBeenCalledWith(p.id, body);
     });

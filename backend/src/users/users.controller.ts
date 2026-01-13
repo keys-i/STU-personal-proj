@@ -14,8 +14,8 @@ import {
 import type { FastifyReply } from 'fastify';
 import {
   ApiBadRequestResponse,
-  ApiCreatedResponse,
   ApiConflictResponse,
+  ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -27,14 +27,13 @@ import {
 import { UserService } from './users.service.js';
 import {
   CreateUserDto,
-  ListUsersQueryDto,
-  IdParamDto,
-  UpdateUserDto,
   ErrorResponseDto,
+  IdParamDto,
+  ListUsersQueryDto,
   OkResponseDto,
-  PaginatedResponseDto,
+  PaginatedUsersResponseDto,
   UserResponseDto,
-  toUserResponseDto,
+  UpdateUserDto,
 } from './dto/dto.js';
 
 @Controller('users')
@@ -90,7 +89,7 @@ export class UsersController {
   @ApiOkResponse({
     description:
       'Paginated users. Soft-deleted excluded by default (deletedAt IS NULL).',
-    type: PaginatedResponseDto<UserResponseDto>,
+    type: PaginatedUsersResponseDto,
   })
   @ApiBadRequestResponse({
     description:
@@ -99,13 +98,8 @@ export class UsersController {
   })
   async getAllUsers(
     @Query() q: ListUsersQueryDto,
-  ): Promise<PaginatedResponseDto<UserResponseDto>> {
-    const res = await this.users.listUsers(q.page, q.limit, q.filter);
-
-    return {
-      data: res.data.map(toUserResponseDto),
-      meta: res.meta,
-    };
+  ): Promise<PaginatedUsersResponseDto> {
+    return await this.users.listUsers(q.page, q.limit, q.filter);
   }
 
   @Get(':id')
@@ -117,7 +111,9 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'User found (not soft-deleted).',
-    type: OkResponseDto<UserResponseDto>,
+    // NOTE: Swagger can't express generics well; it will show the OkResponseDto schema.
+    // Your OkResponseDto should have @ApiProperty({ type: UserResponseDto }) for `data` if you want it precise.
+    type: OkResponseDto,
   })
   @ApiNotFoundResponse({
     description: 'User not found (missing or soft-deleted).',
@@ -130,19 +126,18 @@ export class UsersController {
   async getUser(
     @Param() p: IdParamDto,
   ): Promise<OkResponseDto<UserResponseDto>> {
-    const u = await this.users.getUser(p.id);
-    return { data: toUserResponseDto(u) };
+    return await this.users.getUser(p.id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create user (idempotent by email)' })
   @ApiCreatedResponse({
     description: 'User created (first time)',
-    type: OkResponseDto<UserResponseDto>,
+    type: OkResponseDto,
   })
   @ApiOkResponse({
     description: 'User already exists (returned existing user)',
-    type: OkResponseDto<UserResponseDto>,
+    type: OkResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Validation failed',
@@ -156,12 +151,10 @@ export class UsersController {
     @Body() body: CreateUserDto,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<OkResponseDto<UserResponseDto>> {
-    const { user, created } = await this.users.createUser(body);
+    const res = await this.users.createUser(body);
 
-    // 201 if created, 200 if returned existing
-    reply.code(created ? HttpStatus.CREATED : HttpStatus.OK);
-
-    return { data: toUserResponseDto(user) };
+    reply.code(res.created ? HttpStatus.CREATED : HttpStatus.OK);
+    return { data: res.data };
   }
 
   @Patch(':id')
@@ -173,7 +166,7 @@ export class UsersController {
   })
   @ApiOkResponse({
     description: 'User updated',
-    type: OkResponseDto<UserResponseDto>,
+    type: OkResponseDto,
   })
   @ApiBadRequestResponse({
     description: 'Validation failed or no fields provided',
@@ -191,8 +184,7 @@ export class UsersController {
     @Param() p: IdParamDto,
     @Body() body: UpdateUserDto,
   ): Promise<OkResponseDto<UserResponseDto>> {
-    const u = await this.users.updateUser(p.id, body);
-    return { data: toUserResponseDto(u) };
+    return await this.users.updateUser(p.id, body);
   }
 
   @Delete(':id')

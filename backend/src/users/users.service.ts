@@ -5,20 +5,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
-import { type User, Prisma } from '../../generated/prisma/client.js';
-import type { UserFilterDto, CreateUserDto, UpdateUserDto } from './dto/dto.js';
+import { Prisma } from '../../generated/prisma/client.js';
 
-export type Paginated<T> = {
-  data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-};
+import type { UserFilterDto, CreateUserDto, UpdateUserDto } from './dto/dto.js';
+import {
+  OkResponseDto,
+  PaginatedUsersResponseDto,
+  UserResponseDto,
+  toUserResponseDto,
+} from './dto/dto.js';
 
 @Injectable()
 export class UserService {
@@ -26,20 +21,20 @@ export class UserService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async getUser(id: string): Promise<User> {
+  async getUser(id: string): Promise<OkResponseDto<UserResponseDto>> {
     const user = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
     });
 
     if (!user) throw new NotFoundException(`User ${id} not found`);
-    return user;
+    return { data: toUserResponseDto(user) };
   }
 
   async listUsers(
     page: number,
     limit: number,
     filter?: UserFilterDto,
-  ): Promise<Paginated<User>> {
+  ): Promise<PaginatedUsersResponseDto> {
     const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
 
     const safeLimit = Number.isFinite(limit)
@@ -47,7 +42,6 @@ export class UserService {
       : 10;
 
     const skip = (safePage - 1) * safeLimit;
-
     const where = this.buildWhere(filter);
 
     const [total, data] = await this.prisma.$transaction([
@@ -64,7 +58,7 @@ export class UserService {
     const pageClamped = Math.min(safePage, totalPages);
 
     return {
-      data,
+      data: data.map(toUserResponseDto),
       meta: {
         page: pageClamped,
         limit: safeLimit,
@@ -77,18 +71,11 @@ export class UserService {
   }
 
   private buildWhere(filter?: UserFilterDto): Prisma.UserWhereInput {
-    // soft-delete exclude
-    const where: Prisma.UserWhereInput = {
-      deletedAt: null,
-    };
-
+    const where: Prisma.UserWhereInput = { deletedAt: null };
     if (!filter) return where;
 
     if (filter.name) {
-      where.name = {
-        contains: filter.name,
-        mode: 'insensitive',
-      };
+      where.name = { contains: filter.name, mode: 'insensitive' };
     }
 
     if (filter.status) {
@@ -96,7 +83,6 @@ export class UserService {
     }
 
     this.applyCreatedAtRange(where, filter.fromDate, filter.toDate);
-
     return where;
   }
 
@@ -127,13 +113,12 @@ export class UserService {
     if (Number.isNaN(d.getTime())) {
       throw new BadRequestException(`${field} must be an ISO Date`);
     }
-
     return d;
   }
 
   async createUser(
     dto: CreateUserDto,
-  ): Promise<{ user: User; created: boolean }> {
+  ): Promise<{ data: UserResponseDto; created: boolean }> {
     try {
       const user = await this.prisma.user.create({
         data: {
@@ -143,9 +128,9 @@ export class UserService {
           role: dto.role ?? null,
         },
       });
-      return { user, created: true };
+
+      return { data: toUserResponseDto(user), created: true };
     } catch (e: unknown) {
-      // unique email constraint violation
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&
         e.code === 'P2002'
@@ -162,14 +147,17 @@ export class UserService {
           );
         }
 
-        return { user: existing, created: false };
+        return { data: toUserResponseDto(existing), created: false };
       }
 
       throw e;
     }
   }
 
-  async updateUser(id: string, dto: UpdateUserDto): Promise<User> {
+  async updateUser(
+    id: string,
+    dto: UpdateUserDto,
+  ): Promise<OkResponseDto<UserResponseDto>> {
     const existing = await this.prisma.user.findFirst({
       where: { id, deletedAt: null },
       select: { id: true },
@@ -185,10 +173,12 @@ export class UserService {
     };
 
     try {
-      return await this.prisma.user.update({
+      const updated = await this.prisma.user.update({
         where: { id },
         data,
       });
+
+      return { data: toUserResponseDto(updated) };
     } catch (e: unknown) {
       if (e instanceof Prisma.PrismaClientKnownRequestError) {
         if (e.code === 'P2002')

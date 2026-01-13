@@ -11,6 +11,7 @@ export {
   OkResponseDto,
 } from './response/response.dto.js';
 export {
+  PaginatedUsersResponseDto,
   toUserResponseDto,
   UserResponseDto,
 } from './response/user.response.dto.js';

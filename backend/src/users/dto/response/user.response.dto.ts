@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { UserRole, UserStatus } from '../../../../generated/prisma/client.js';
 import type { User as PrismaUser } from '../../../../generated/prisma/client.js';
+import { UserRole, UserStatus } from '../../../../generated/prisma/client.js';
 
 export class UserResponseDto {
   @ApiProperty()
@@ -20,6 +20,22 @@ export class UserResponseDto {
 
   @ApiProperty()
   createdAt!: string;
+}
+
+export class PageMetaDto {
+  @ApiProperty() page!: number;
+  @ApiProperty() limit!: number;
+  @ApiProperty() total!: number;
+  @ApiProperty() totalPages!: number;
+  @ApiProperty() hasNext!: boolean;
+  @ApiProperty() hasPrev!: boolean;
+}
+export class PaginatedUsersResponseDto {
+  @ApiProperty({ type: () => [UserResponseDto] })
+  data!: UserResponseDto[];
+
+  @ApiProperty({ type: () => PageMetaDto })
+  meta!: PageMetaDto;
 }
 
 export function toUserResponseDto(u: PrismaUser): UserResponseDto {
