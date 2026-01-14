@@ -15,8 +15,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-backend:
+  build-and-push:
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            dockerfile: backend/Dockerfile.backend
+            image_suffix: backend
+            env_target: backend
+          - name: frontend
+            dockerfile: frontend/Dockerfile.frontend
+            image_suffix: frontend
+            env_target: frontend
 
     steps:
       - name: Checkout
@@ -33,60 +46,48 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Key fix: create backend/.env so prisma generate can read DATABASE_URL during docker build
-      - name: Prepare dummy .env for Docker build
+      # Creates <target>/.env + whitelists it into the Docker build context (even if .dockerignore blocks *.env)
+      - name: Prepare env + dockerignore whitelist
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ -f backend/examples/example.env ]]; then
-            cp backend/examples/example.env backend/.env
-          elif [[ -f backend/examples/examples.env ]]; then
-            cp backend/examples/examples.env backend/.env
-          else
-            echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres?schema=public" > backend/.env
-          fi
-
-          # Hard fail if DATABASE_URL isn't present
-          grep -q '^DATABASE_URL=' backend/.env
-
-      # Ensure backend/.env is included in the Docker build context even if .dockerignore blocks *.env
-      - name: Whitelist backend/.env in dockerignore for this run
-        shell: bash
-        run: |
-          set -euo pipefail
-          {
-            echo ""
-            echo "# Added by GitHub Actions for CI build"
-            echo "!backend/"
-            echo "!backend/.env"
-            echo "!backend/examples/"
-          } >> .dockerignore
+          bash scripts/ci-prepare-env.sh "${{ matrix.env_target }}"
 
       - name: Docker metadata (tags, labels)
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-backend
+          images: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}-${{ matrix.image_suffix }}
           tags: |
             type=sha
             type=ref,event=branch
             type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=${{ github.event.repository.name }}-${{ matrix.image_suffix }}
+            org.opencontainers.image.description=${{ github.event.repository.name }} ${{ matrix.name }} image
+            org.opencontainers.image.vendor=${{ github.repository_owner }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
 
       - name: Build (and push on non-PR)
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: backend/Dockerfile.backend
+          file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Useful provenance; harmless on PRs
+          provenance: true
+          sbom: true
 
-      - name: Cleanup dummy env
+      - name: Cleanup env
         if: ${{ always() }}
         shell: bash
         run: |
-          rm -f backend/.env
+          set -euo pipefail
+          bash scripts/ci-cleanup-env.sh "${{ matrix.env_target }}"
