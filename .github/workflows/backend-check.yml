@@ -1,4 +1,4 @@
-name: Check Backend Code
+name: Check Code
 
 on:
   push:
@@ -7,11 +7,17 @@ on:
     branches: [main]
 
 jobs:
-  backend-check:
+  check:
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [frontend, backend]
+
     defaults:
       run:
-        working-directory: backend
+        working-directory: ${{ matrix.app }}
 
     steps:
       - name: Checkout
@@ -22,10 +28,18 @@ jobs:
         with:
           node-version: 25
           cache: npm
-          cache-dependency-path: backend/package-lock.json
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
 
-      # Prisma engine cache (big win)
+      - name: Load env (examples/example.env)
+        if: matrix.app == 'backend'
+        shell: bash
+        run: cat examples/example.env >> "$GITHUB_ENV"
+
+      - name: Install deps
+        run: npm ci
+
       - name: Cache Prisma engines
+        if: matrix.app == 'backend'
         uses: actions/cache@v4
         with:
           path: ~/.cache/prisma
@@ -33,8 +47,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-prisma-
 
-      # Optional: ESLint cache (only helps if you use eslint --cache)
+      - name: Prisma generate
+        if: matrix.app == 'backend'
+        run: npx prisma generate
+
       - name: Cache ESLint
+        if: matrix.app == 'backend'
         uses: actions/cache@v4
         with:
           path: backend/.eslintcache
@@ -42,8 +60,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-eslint-
 
-      # Optional: TypeScript incremental cache (only helps if typecheck is incremental)
       - name: Cache TypeScript
+        if: matrix.app == 'backend'
         uses: actions/cache@v4
         with:
           path: backend/.tsbuildinfo
@@ -51,21 +69,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-tsc-
 
-      - name: Install deps
-        run: npm ci
-
-      - name: Load env (examples/examples.env)
-        shell: bash
-        run: cat examples/example.env >> "$GITHUB_ENV"
-
-      - name: Prisma generate
-        run: npx prisma generate
-
       - name: Lint
-        run: npm run lint:check
+        run: npm run lint:check --if-present
 
-      - name: Format Check
-        run: npm run format:check
+      - name: Format check
+        run: npm run format:check --if-present
 
-      - name: Type Check
+      - name: Type check
         run: npm run typecheck --if-present
+
+      - name: Test
+        run: npm test --if-present
