@@ -88,12 +88,12 @@ GET /users?page=1&limit=10&filter[name]=jo&filter[status]=ACTIVE
 
 #### Supported filters:
 
-| Query            | param      | Type                            | Meaning  |
-| ---------------- | ---------- | ------------------------------- | -------- | --------- |
-| filter[name]     | string     | Partial match, case-insensitive |
-| filter[status]   | enum       | ACTIVE                          | INACTIVE | SUSPENDED |
-| filter[fromDate] | ISO string | Start date                      |
-| filter[toDate]   | ISO string | End date                        |
+| Query param      | Type       | Meaning                               |
+| ---------------- | ---------- | ------------------------------------- |
+| filter[name]     | string     | Partial match, case-insensitive       |
+| filter[status]   | enum       | `ACTIVE` or `INACTIVE` or `SUSPENDED` |
+| filter[fromDate] | ISO string | Start date                            |
+| filter[toDate]   | ISO string | End date                              |
 
 ### Get by id
 
@@ -150,6 +150,7 @@ npm run build
 ```
 
 > Notes
-> In development, the UI calls /api/\* and Vite proxies requests to the backend.
-> Pagination is controlled via page + limit.
-> Filtering uses bracket-style query params like filter[name]=....
+>
+> - In development, the UI calls /api/\* and Vite proxies requests to the backend.
+> - Pagination is controlled via page + limit.
+> - Filtering uses bracket-style query params like filter[name]=....
