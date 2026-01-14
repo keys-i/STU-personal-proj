@@ -1,4 +1,3 @@
-// src/features/users/api.test.ts
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { AxiosInstance, AxiosError, AxiosResponse } from "axios";
 import type { Paginated, User } from "./types";
@@ -92,29 +91,36 @@ function makePage(overrides?: Partial<Paginated<User>>): Paginated<User> {
 describe("users api (axios)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.resetModules(); // ensures ./api module init runs fresh per test
+    vi.resetModules(); // ensures ./middleware module init runs fresh per test
   });
 
-  it("creates axios instance with baseURL and installs response interceptor", async () => {
-    await import("./api");
+  it("creates axios instance with baseURL, paramsSerializer, and installs response interceptor", async () => {
+    await import("./middleware");
 
     expect(mock.axiosNs.create).toHaveBeenCalledTimes(1);
 
     const cfg = mock.axiosNs.create.mock.lastCall?.[0] as
-      | { baseURL?: unknown; headers?: unknown }
+      | {
+          baseURL?: unknown;
+          headers?: unknown;
+          paramsSerializer?: unknown;
+        }
       | undefined;
 
     expect(cfg).toBeTruthy();
     expect(cfg?.baseURL).toEqual(expect.any(String));
     expect(cfg?.headers).toEqual({ "Content-Type": "application/json" });
 
+    // NEW: paramsSerializer added for qs
+    expect(cfg?.paramsSerializer).toEqual(expect.any(Function));
+
     expect(mock.instance.interceptors.response.use).toHaveBeenCalledTimes(1);
     expect(typeof mock.pair.onRejected).toBe("function");
     expect(typeof mock.pair.onFulfilled).toBe("function");
   });
 
-  it("listUsers calls GET /users with params (including filter[*]) and returns data", async () => {
-    const { listUsers } = await import("./api");
+  it("listUsers calls GET /users with nested params.filter and returns data", async () => {
+    const { listUsers } = await import("./middleware");
 
     const payload = makePage({
       data: [makeUser("1"), makeUser("2")],
@@ -146,18 +152,20 @@ describe("users api (axios)", () => {
       params: {
         page: 3,
         limit: 20,
-        "filter[name]": "gina",
-        "filter[status]": "INACTIVE",
-        "filter[fromDate]": "2025-01-01T00:00:00.000Z",
-        "filter[toDate]": "2025-01-31T00:00:00.000Z",
+        filter: {
+          name: "gina",
+          status: "INACTIVE",
+          fromDate: "2025-01-01T00:00:00.000Z",
+          toDate: "2025-01-31T00:00:00.000Z",
+        },
       },
     });
 
     expect(res).toEqual(payload);
   });
 
-  it("listUsers omits empty/undefined filters", async () => {
-    const { listUsers } = await import("./api");
+  it("listUsers omits empty/undefined filters (nested filter becomes empty object)", async () => {
+    const { listUsers } = await import("./middleware");
     mock.instance.get.mockResolvedValueOnce({ data: makePage() });
 
     await listUsers({
@@ -171,13 +179,14 @@ describe("users api (axios)", () => {
       },
     });
 
+    // With your current buildParams(), filter is always present but can be {}
     expect(mock.instance.get).toHaveBeenCalledWith("/users", {
-      params: { page: 1, limit: 10 },
+      params: { page: 1, limit: 10, filter: {} },
     });
   });
 
   it("getUser calls GET /users/:id with encodeURIComponent", async () => {
-    const { getUser } = await import("./api");
+    const { getUser } = await import("./middleware");
     const u = makeUser("x");
     mock.instance.get.mockResolvedValueOnce({ data: u });
 
@@ -191,7 +200,7 @@ describe("users api (axios)", () => {
   });
 
   it("createUser calls POST /users with body and returns user", async () => {
-    const { createUser } = await import("./api");
+    const { createUser } = await import("./middleware");
     const u = makeUser("9");
     mock.instance.post.mockResolvedValueOnce({ data: u });
 
@@ -212,7 +221,7 @@ describe("users api (axios)", () => {
   });
 
   it("updateUser calls PATCH /users/:id with encodeURIComponent + input", async () => {
-    const { updateUser } = await import("./api");
+    const { updateUser } = await import("./middleware");
     const u = makeUser("10");
     mock.instance.patch.mockResolvedValueOnce({ data: u });
 
@@ -227,7 +236,7 @@ describe("users api (axios)", () => {
   });
 
   it("softDeleteUser calls DELETE /users/:id with encodeURIComponent", async () => {
-    const { softDeleteUser } = await import("./api");
+    const { softDeleteUser } = await import("./middleware");
     mock.instance.delete.mockResolvedValueOnce({ data: undefined });
 
     const id = "x/y";
@@ -281,7 +290,7 @@ describe("users api (axios)", () => {
         expected: "Network down",
       },
     ])("$title", async ({ axiosErr, expected }) => {
-      await import("./api");
+      await import("./middleware");
 
       mock.axiosNs.isAxiosError.mockReturnValue(true);
 
@@ -294,7 +303,7 @@ describe("users api (axios)", () => {
     });
 
     it("non-axios error is passed through as Error(message)", async () => {
-      await import("./api");
+      await import("./middleware");
 
       mock.axiosNs.isAxiosError.mockReturnValue(false);
 

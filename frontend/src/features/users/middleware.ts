@@ -3,7 +3,7 @@ import axios, {
   type AxiosInstance,
   type AxiosResponse,
 } from "axios";
-import qs from "qs"; // <-- add this
+import qs from "qs";
 import type {
   CreateUserInput,
   Paginated,

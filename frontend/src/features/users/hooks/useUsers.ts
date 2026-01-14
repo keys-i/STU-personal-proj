@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { listUsers, type UserFilter } from "../api";
+import { listUsers, type UserFilter } from "../middleware";
 import type { Paginated, User } from "../types";
 
 type Meta = Paginated<User>["meta"];

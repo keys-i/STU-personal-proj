@@ -7,7 +7,7 @@ import {
   softDeleteUser,
   updateUser,
   type UserFilter,
-} from "../features/users/api";
+} from "../features/users/middleware";
 import type {
   CreateUserInput,
   UpdateUserInput,

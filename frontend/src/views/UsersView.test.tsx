@@ -1,15 +1,14 @@
-// src/views/UsersView.test.tsx
 import { act } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import type { User, UserFilter } from "../features/users/types";
+import type { User } from "../features/users/types";
+import type { UserFilter } from "../features/users/middleware";
 import { UsersView } from "./UsersView";
 
 const H = vi.hoisted(() => {
   const mockToggleTheme = vi.fn();
 
   const mockRefresh = vi.fn().mockResolvedValue(undefined);
-  const mockLoadNext = vi.fn().mockResolvedValue(undefined);
 
   const api = {
     createUser: vi.fn().mockResolvedValue(undefined),
@@ -26,19 +25,18 @@ const H = vi.hoisted(() => {
     } | null,
     loading: false,
     error: null as string | null,
-    hasNext: false,
   };
 
-  const useUsers = vi.fn((args: { limit: number; filter: UserFilter }) => ({
-    _debug: args.limit,
-    items: useUsersState.items,
-    meta: useUsersState.meta,
-    loading: useUsersState.loading,
-    error: useUsersState.error,
-    refresh: mockRefresh,
-    loadNext: mockLoadNext,
-    hasNext: useUsersState.hasNext,
-  }));
+  const useUsers = vi.fn(
+    (args: { page: number; limit: number; filter: UserFilter }) => ({
+      _debug: args,
+      items: useUsersState.items,
+      meta: useUsersState.meta,
+      loading: useUsersState.loading,
+      error: useUsersState.error,
+      refresh: mockRefresh,
+    }),
+  );
 
   const ThemeToggle = vi.fn(
     (props: { checked: boolean; onChange: (v: boolean) => void }) => (
@@ -78,14 +76,46 @@ const H = vi.hoisted(() => {
       loading: boolean;
       limit: number;
       onLimitChange: (n: number) => void;
+
+      page: number;
+      totalPages: number;
+      hasPrev: boolean;
+      hasNext: boolean;
+      onPrevPage: () => void;
+      onNextPage: () => void;
+
       onEdit: (u: User) => void;
       onDelete: (id: string) => void;
     }) => (
       <div data-testid="table">
         <div data-testid="table-users">{props.users.length}</div>
+
+        <div data-testid="pager">
+          <span>Page</span>
+          <span data-testid="pager-page">{props.page}</span>
+          <span>/</span>
+          <span data-testid="pager-total">{props.totalPages}</span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => props.onPrevPage()}
+          disabled={!props.hasPrev}
+        >
+          Prev
+        </button>
+        <button
+          type="button"
+          onClick={() => props.onNextPage()}
+          disabled={!props.hasNext}
+        >
+          Next
+        </button>
+
         <button type="button" onClick={() => props.onLimitChange(50)}>
           TableSetLimit50
         </button>
+
         <button
           type="button"
           onClick={() => {
@@ -106,6 +136,7 @@ const H = vi.hoisted(() => {
         >
           TableEditFirst
         </button>
+
         <button type="button" onClick={() => props.onDelete("u1")}>
           TableDeleteU1
         </button>
@@ -182,7 +213,6 @@ const H = vi.hoisted(() => {
   return {
     mockToggleTheme,
     mockRefresh,
-    mockLoadNext,
     api,
     useUsers,
     useUsersState,
@@ -205,7 +235,8 @@ vi.mock("../features/users/hooks/useUsers", () => ({
   useUsers: H.useUsers,
 }));
 
-vi.mock("../features/users/api", () => ({
+// IMPORTANT: UsersView imports from middleware (not api)
+vi.mock("../features/users/middleware", () => ({
   createUser: (input: unknown) => H.api.createUser(input),
   updateUser: (id: string, input: unknown) => H.api.updateUser(id, input),
   softDeleteUser: (id: string) => H.api.softDeleteUser(id),
@@ -267,11 +298,20 @@ async function flushAll(): Promise<void> {
   await flushPromises();
 }
 
-function lastFilterName(): string | undefined {
-  const last = H.useUsers.mock.calls.at(-1)?.[0] as
-    | { limit: number; filter: UserFilter }
+function lastArgs():
+  | { page: number; limit: number; filter: UserFilter }
+  | undefined {
+  return H.useUsers.mock.calls.at(-1)?.[0] as
+    | { page: number; limit: number; filter: UserFilter }
     | undefined;
-  return last?.filter?.name;
+}
+
+function lastFilterName(): string | undefined {
+  return lastArgs()?.filter?.name;
+}
+
+function lastPage(): number | undefined {
+  return lastArgs()?.page;
 }
 
 describe("UsersView", () => {
@@ -283,7 +323,6 @@ describe("UsersView", () => {
     H.useUsersState.meta = { page: 1, totalPages: 1, total: 0 };
     H.useUsersState.loading = false;
     H.useUsersState.error = null;
-    H.useUsersState.hasNext = false;
   });
 
   afterEach(() => {
@@ -315,14 +354,13 @@ describe("UsersView", () => {
     expect(screen.queryByTestId("filters")).not.toBeInTheDocument();
   });
 
-  it("debounces search into filterState.name (causes useUsers to receive updated filter)", async () => {
+  it("debounces search into filterState.name (useUsers receives updated filter)", async () => {
     render(<UsersView />);
 
     const input = screen.getByPlaceholderText("Search by name…");
 
     fireEvent.change(input, { target: { value: "ann" } });
 
-    // before debounce fires, we should NOT have committed filter.name="ann"
     const namesBefore = H.useUsers.mock.calls.map(
       (c) => (c[0] as { filter: UserFilter }).filter.name,
     );
@@ -333,22 +371,23 @@ describe("UsersView", () => {
     });
     await flushPromises();
 
-    // after debounce, latest call should have filter.name="ann"
     expect(lastFilterName()).toBe("ann");
+    expect(lastPage()).toBe(1); // still page 1
   });
 
-  it("pressing Enter commits search immediately and cancels debounce", async () => {
+  it("pressing Enter commits search immediately and refresh is called", async () => {
     render(<UsersView />);
 
     const input = screen.getByPlaceholderText("Search by name…");
 
     fireEvent.change(input, { target: { value: "bob" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await flushPromises();
+    await flushAll();
 
     expect(lastFilterName()).toBe("bob");
+    expect(H.mockRefresh).toHaveBeenCalledTimes(1);
 
-    // advancing time should NOT change committed name away from "bob"
+    // advancing time should not change it again
     act(() => {
       vi.advanceTimersByTime(1000);
     });
@@ -365,15 +404,57 @@ describe("UsersView", () => {
     expect(screen.getByTestId("empty")).toBeInTheDocument();
   });
 
-  it("renders table + meta when users exist", () => {
+  it("renders table when users exist and passes pagination props", () => {
     H.useUsersState.items = [makeUser("1"), makeUser("2")];
-    H.useUsersState.meta = { page: 2, totalPages: 5, total: 99 };
+    H.useUsersState.meta = { page: 1, totalPages: 5, total: 99 };
 
     render(<UsersView />);
 
     expect(screen.getByTestId("table")).toBeInTheDocument();
-    expect(screen.getByText(/Page/i)).toBeInTheDocument();
-    expect(screen.getByText("99")).toBeInTheDocument();
+    expect(screen.getByTestId("table-users")).toHaveTextContent("2");
+    expect(screen.getByTestId("pager-page")).toHaveTextContent("1");
+    expect(screen.getByTestId("pager-total")).toHaveTextContent("5");
+  });
+
+  it("pagination: clicking Next increments page (triggers useUsers with new page)", async () => {
+    H.useUsersState.items = [makeUser("1")];
+    H.useUsersState.meta = { page: 1, totalPages: 3, total: 30 };
+
+    render(<UsersView />);
+
+    expect(lastPage()).toBe(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await flushPromises();
+
+    expect(lastPage()).toBe(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Prev" }));
+    await flushPromises();
+
+    expect(lastPage()).toBe(1);
+  });
+
+  it("apply filters triggers refresh and resets page to 1", async () => {
+    H.useUsersState.items = [makeUser("1")];
+    H.useUsersState.meta = { page: 1, totalPages: 3, total: 30 };
+
+    render(<UsersView />);
+
+    // go to page 2
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await flushPromises();
+    expect(lastPage()).toBe(2);
+
+    // open filters
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByTestId("filters")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("ApplyFilters"));
+    await flushAll();
+
+    expect(H.mockRefresh).toHaveBeenCalled();
+    expect(lastPage()).toBe(1);
   });
 
   it("create flow: clicking New then submit calls createUser + refresh + shows confetti", async () => {
@@ -398,6 +479,8 @@ describe("UsersView", () => {
     render(<UsersView />);
 
     fireEvent.click(screen.getByText("TableEditFirst"));
+    await flushAll();
+
     expect(screen.getByTestId("edit-modal")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Save Modal"));
@@ -419,20 +502,6 @@ describe("UsersView", () => {
     expect(H.api.softDeleteUser).toHaveBeenCalledTimes(1);
     expect(H.api.softDeleteUser).toHaveBeenCalledWith("u1");
     expect(H.mockRefresh).toHaveBeenCalledTimes(1);
-  });
-
-  it("refresh button calls refresh; load more calls loadNext when hasNext", () => {
-    H.useUsersState.items = [makeUser("1")];
-    H.useUsersState.meta = { page: 1, totalPages: 2, total: 2 };
-    H.useUsersState.hasNext = true;
-
-    render(<UsersView />);
-
-    fireEvent.click(screen.getByRole("button", { name: /refresh/i }));
-    expect(H.mockRefresh).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole("button", { name: /load more/i }));
-    expect(H.mockLoadNext).toHaveBeenCalledTimes(1);
   });
 
   it("ThemeToggle click calls toggle", () => {

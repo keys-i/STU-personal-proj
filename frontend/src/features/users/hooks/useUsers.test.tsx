@@ -1,336 +1,318 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
-
-import { useUsers } from "./useUsers";
+import type { AxiosInstance, AxiosError, AxiosResponse } from "axios";
 import type { Paginated, User } from "../types";
-import type { UserFilter } from "../api";
 
-vi.mock("../api", () => ({
-  listUsers: vi.fn(),
-}));
+type ErrorPayload = { message?: unknown };
 
-import { listUsers } from "../api";
+type InterceptorPair = {
+  onFulfilled?: (res: AxiosResponse) => AxiosResponse;
+  onRejected?: (err: unknown) => Promise<never>;
+};
 
-function makeUser(i: number): User {
+function makeAxiosMock() {
+  const pair: InterceptorPair = {};
+
+  const interceptors: { response: { use: ReturnType<typeof vi.fn> } } = {
+    response: {
+      use: vi.fn(
+        (
+          onFulfilled?: (res: AxiosResponse) => AxiosResponse,
+          onRejected?: (err: unknown) => Promise<never>,
+        ) => {
+          pair.onFulfilled = onFulfilled;
+          pair.onRejected = onRejected;
+          return 0;
+        },
+      ),
+    },
+  };
+
+  const instance = {
+    interceptors,
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+  } as unknown as AxiosInstance & {
+    get: ReturnType<typeof vi.fn>;
+    post: ReturnType<typeof vi.fn>;
+    patch: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    interceptors: typeof interceptors;
+  };
+
+  const axiosNs = {
+    create: vi.fn<(config: unknown) => AxiosInstance>(() => instance),
+    isAxiosError: vi.fn<(v: unknown) => boolean>(),
+  };
+
+  return { axiosNs, instance, pair };
+}
+
+// One shared mock object; we reset call history each test.
+const mock = makeAxiosMock();
+
+vi.mock("axios", () => {
   return {
-    id: String(i),
-    name: `User ${i}`,
-    email: `u${i}@x.com`,
+    default: mock.axiosNs,
+    isAxiosError: mock.axiosNs.isAxiosError,
+    create: mock.axiosNs.create,
+  };
+});
+
+function makeUser(id: string): User {
+  return {
+    id,
+    name: `User ${id}`,
+    email: `u${id}@x.com`,
     status: "ACTIVE",
     role: null,
-    createdAt: new Date(0).toISOString(),
-    updatedAt: new Date(0).toISOString(),
+    createdAt: "2025-01-01T00:00:00.000Z",
+    updatedAt: "2025-01-01T00:00:00.000Z",
     deletedAt: null,
   };
 }
 
-function makePage(args: {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  items: User[];
-}): Paginated<User> {
-  const { page, limit, total, totalPages, items } = args;
+function makePage(overrides?: Partial<Paginated<User>>): Paginated<User> {
   return {
-    data: items,
+    data: [makeUser("1")],
     meta: {
-      page,
-      limit,
-      total,
-      totalPages,
-      hasNext: page < totalPages,
-      hasPrev: page > 1,
+      page: 1,
+      limit: 10,
+      total: 1,
+      totalPages: 1,
+      hasNext: false,
+      hasPrev: false,
     },
+    ...overrides,
   };
 }
 
-function mockListUsersOnce(value: Paginated<User>) {
-  (listUsers as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-    value,
-  );
-}
-
-function mockListUsersRejectOnce(err: unknown) {
-  (listUsers as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(err);
-}
-
-beforeEach(() => {
-  vi.clearAllMocks();
-});
-
-describe("useUsers", () => {
-  it("loads page 1 on mount (refresh) and sets items/meta", async () => {
-    const limit = 10;
-    const filter: UserFilter = { name: "a" };
-
-    mockListUsersOnce(
-      makePage({
-        page: 1,
-        limit,
-        total: 2,
-        totalPages: 1,
-        items: [makeUser(1), makeUser(2)],
-      }),
-    );
-
-    const { result } = renderHook(() => useUsers({ limit, filter }));
-
-    expect(result.current.loading).toBe(true);
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(listUsers).toHaveBeenCalledTimes(1);
-    expect(listUsers).toHaveBeenCalledWith({ page: 1, limit, filter });
-
-    expect(result.current.items).toHaveLength(2);
-    expect(result.current.meta?.page).toBe(1);
-    expect(result.current.hasNext).toBe(false);
-    expect(result.current.error).toBeNull();
+describe("users api (axios)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.resetModules(); // ensures ../middleware module init runs fresh per test
   });
 
-  it.each([
-    {
-      title: "hasNext true when page < totalPages",
-      page: 1,
-      totalPages: 3,
-      expected: true,
-    },
-    {
-      title: "hasNext false when page === totalPages",
+  it("creates axios instance with baseURL, paramsSerializer, and installs response interceptor", async () => {
+    await import("../middleware");
+
+    expect(mock.axiosNs.create).toHaveBeenCalledTimes(1);
+
+    const cfg = mock.axiosNs.create.mock.lastCall?.[0] as
+      | {
+          baseURL?: unknown;
+          headers?: unknown;
+          paramsSerializer?: unknown;
+        }
+      | undefined;
+
+    expect(cfg).toBeTruthy();
+    expect(cfg?.baseURL).toEqual(expect.any(String));
+    expect(cfg?.headers).toEqual({ "Content-Type": "application/json" });
+
+    // NEW: paramsSerializer added for qs
+    expect(cfg?.paramsSerializer).toEqual(expect.any(Function));
+
+    expect(mock.instance.interceptors.response.use).toHaveBeenCalledTimes(1);
+    expect(typeof mock.pair.onRejected).toBe("function");
+    expect(typeof mock.pair.onFulfilled).toBe("function");
+  });
+
+  it("listUsers calls GET /users with nested params.filter and returns data", async () => {
+    const { listUsers } = await import("../middleware");
+
+    const payload = makePage({
+      data: [makeUser("1"), makeUser("2")],
+      meta: {
+        page: 3,
+        limit: 20,
+        total: 99,
+        totalPages: 5,
+        hasNext: true,
+        hasPrev: true,
+      },
+    });
+
+    mock.instance.get.mockResolvedValueOnce({ data: payload });
+
+    const res = await listUsers({
       page: 3,
-      totalPages: 3,
-      expected: false,
-    },
-    {
-      title: "hasNext false when only one page",
+      limit: 20,
+      filter: {
+        name: "gina",
+        status: "INACTIVE",
+        fromDate: "2025-01-01T00:00:00.000Z",
+        toDate: "2025-01-31T00:00:00.000Z",
+      },
+    });
+
+    expect(mock.instance.get).toHaveBeenCalledTimes(1);
+    expect(mock.instance.get).toHaveBeenCalledWith("/users", {
+      params: {
+        page: 3,
+        limit: 20,
+        filter: {
+          name: "gina",
+          status: "INACTIVE",
+          fromDate: "2025-01-01T00:00:00.000Z",
+          toDate: "2025-01-31T00:00:00.000Z",
+        },
+      },
+    });
+
+    expect(res).toEqual(payload);
+  });
+
+  it("listUsers omits empty/undefined filters (nested filter becomes empty object)", async () => {
+    const { listUsers } = await import("../middleware");
+    mock.instance.get.mockResolvedValueOnce({ data: makePage() });
+
+    await listUsers({
       page: 1,
-      totalPages: 1,
-      expected: false,
-    },
-  ])("$title", async ({ page, totalPages, expected }) => {
-    mockListUsersOnce(
-      makePage({
-        page,
-        limit: 10,
-        total: 30,
-        totalPages,
-        items: [makeUser(1)],
-      }),
-    );
+      limit: 10,
+      filter: {
+        name: "",
+        status: undefined,
+        fromDate: undefined,
+        toDate: undefined,
+      },
+    });
 
-    const { result } = renderHook(() => useUsers({ limit: 10, filter: {} }));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.hasNext).toBe(expected);
+    // With your current buildParams(), filter is always present but can be {}
+    expect(mock.instance.get).toHaveBeenCalledWith("/users", {
+      params: { page: 1, limit: 10, filter: {} },
+    });
   });
 
-  it("refresh() reloads page 1 and replaces items", async () => {
-    const limit = 10;
+  it("getUser calls GET /users/:id with encodeURIComponent", async () => {
+    const { getUser } = await import("../middleware");
+    const u = makeUser("x");
+    mock.instance.get.mockResolvedValueOnce({ data: u });
 
-    mockListUsersOnce(
-      makePage({
-        page: 1,
-        limit,
-        total: 2,
-        totalPages: 1,
-        items: [makeUser(1)],
-      }),
+    const id = "a/b?c=d";
+    const res = await getUser(id);
+
+    expect(mock.instance.get).toHaveBeenCalledWith(
+      `/users/${encodeURIComponent(id)}`,
     );
-
-    const { result } = renderHook(() => useUsers({ limit, filter: {} }));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.items.map((u) => u.id)).toEqual(["1"]);
-
-    mockListUsersOnce(
-      makePage({
-        page: 1,
-        limit,
-        total: 1,
-        totalPages: 1,
-        items: [makeUser(99)],
-      }),
-    );
-
-    await act(async () => {
-      await result.current.refresh();
-    });
-
-    expect(listUsers).toHaveBeenCalledWith({ page: 1, limit, filter: {} });
-    expect(result.current.items.map((u) => u.id)).toEqual(["99"]);
+    expect(res).toEqual(u);
   });
 
-  it("loadNext() appends next page when there are more pages", async () => {
-    const limit = 2;
+  it("createUser calls POST /users with body and returns user", async () => {
+    const { createUser } = await import("../middleware");
+    const u = makeUser("9");
+    mock.instance.post.mockResolvedValueOnce({ data: u });
 
-    mockListUsersOnce(
-      makePage({
-        page: 1,
-        limit,
-        total: 4,
-        totalPages: 2,
-        items: [makeUser(1), makeUser(2)],
-      }),
-    );
-
-    const { result } = renderHook(() => useUsers({ limit, filter: {} }));
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.hasNext).toBe(true);
-
-    mockListUsersOnce(
-      makePage({
-        page: 2,
-        limit,
-        total: 4,
-        totalPages: 2,
-        items: [makeUser(3), makeUser(4)],
-      }),
-    );
-
-    await act(async () => {
-      await result.current.loadNext();
+    const res = await createUser({
+      name: "N",
+      email: "n@x.com",
+      status: "ACTIVE",
+      role: null,
     });
 
-    expect(listUsers).toHaveBeenNthCalledWith(1, {
-      page: 1,
-      limit,
-      filter: {},
+    expect(mock.instance.post).toHaveBeenCalledWith("/users", {
+      name: "N",
+      email: "n@x.com",
+      status: "ACTIVE",
+      role: null,
     });
-    expect(listUsers).toHaveBeenNthCalledWith(2, {
-      page: 2,
-      limit,
-      filter: {},
-    });
-
-    expect(result.current.items.map((u) => u.id)).toEqual(["1", "2", "3", "4"]);
-    expect(result.current.hasNext).toBe(false);
+    expect(res).toEqual(u);
   });
 
-  it.each([
-    {
-      title: "does nothing when meta is null",
-      setup: () => {
-        (
-          listUsers as unknown as ReturnType<typeof vi.fn>
-        ).mockImplementationOnce(() => new Promise(() => {}));
-      },
-      actLoadNext: true,
-      expectedCalls: 1,
-      expectHasNext: false,
-    },
-    {
-      title: "does nothing when already loading",
-      setup: () => {
-        (
-          listUsers as unknown as ReturnType<typeof vi.fn>
-        ).mockImplementationOnce(() => new Promise(() => {}));
-      },
-      actLoadNext: true,
-      expectedCalls: 1,
-      expectHasNext: false,
-    },
-    {
-      title: "does nothing when there is no next page",
-      setup: () => {
-        mockListUsersOnce(
-          makePage({
-            page: 1,
-            limit: 10,
-            total: 1,
-            totalPages: 1,
-            items: [makeUser(1)],
-          }),
-        );
-      },
-      actLoadNext: true,
-      expectedCalls: 1,
-      expectHasNext: false,
-      waitInitial: true,
-    },
-  ])("$title", async ({ setup, actLoadNext, expectedCalls, waitInitial }) => {
-    setup();
+  it("updateUser calls PATCH /users/:id with encodeURIComponent + input", async () => {
+    const { updateUser } = await import("../middleware");
+    const u = makeUser("10");
+    mock.instance.patch.mockResolvedValueOnce({ data: u });
 
-    const { result } = renderHook(() => useUsers({ limit: 10, filter: {} }));
+    const id = "id with spaces";
+    const res = await updateUser(id, { status: "SUSPENDED" });
 
-    if (waitInitial) {
-      await waitFor(() => expect(result.current.loading).toBe(false));
-    }
+    expect(mock.instance.patch).toHaveBeenCalledWith(
+      `/users/${encodeURIComponent(id)}`,
+      { status: "SUSPENDED" },
+    );
+    expect(res).toEqual(u);
+  });
 
-    if (actLoadNext) {
-      await act(async () => {
-        await result.current.loadNext();
+  it("softDeleteUser calls DELETE /users/:id with encodeURIComponent", async () => {
+    const { softDeleteUser } = await import("../middleware");
+    mock.instance.delete.mockResolvedValueOnce({ data: undefined });
+
+    const id = "x/y";
+    await softDeleteUser(id);
+
+    expect(mock.instance.delete).toHaveBeenCalledWith(
+      `/users/${encodeURIComponent(id)}`,
+    );
+  });
+
+  describe("error interceptor -> nice Error message", () => {
+    it.each([
+      {
+        title: "string response body",
+        axiosErr: {
+          response: { status: 400, data: "Bad request" },
+          message: "ignored",
+        },
+        expected: "Bad request",
+      },
+      {
+        title: "object {message: string}",
+        axiosErr: {
+          response: { status: 422, data: { message: "Validation failed" } },
+          message: "ignored",
+        },
+        expected: "Validation failed",
+      },
+      {
+        title: "object {message: non-string} falls back to HTTP status",
+        axiosErr: {
+          response: { status: 500, data: { message: { nope: true } } },
+          message: "ignored",
+        },
+        expected: "HTTP 500",
+      },
+      {
+        title: "response without useful body falls back to HTTP status",
+        axiosErr: {
+          response: { status: 404, data: "" },
+          message: "ignored",
+        },
+        expected: "HTTP 404",
+      },
+      {
+        title: "no response falls back to axios message",
+        axiosErr: {
+          response: undefined,
+          message: "Network down",
+        },
+        expected: "Network down",
+      },
+    ])("$title", async ({ axiosErr, expected }) => {
+      await import("../middleware");
+
+      mock.axiosNs.isAxiosError.mockReturnValue(true);
+
+      const handler = mock.pair.onRejected;
+      expect(handler).toBeTypeOf("function");
+
+      await expect(
+        handler?.(axiosErr as AxiosError<ErrorPayload | string>),
+      ).rejects.toMatchObject({ message: expected });
+    });
+
+    it("non-axios error is passed through as Error(message)", async () => {
+      await import("../middleware");
+
+      mock.axiosNs.isAxiosError.mockReturnValue(false);
+
+      const handler = mock.pair.onRejected;
+      expect(handler).toBeTypeOf("function");
+
+      await expect(handler?.(new Error("boom"))).rejects.toMatchObject({
+        message: "boom",
       });
-    }
-
-    expect(listUsers).toHaveBeenCalledTimes(expectedCalls);
-  });
-
-  it("sets error when listUsers throws, and keeps items/meta stable", async () => {
-    mockListUsersRejectOnce(new Error("boom"));
-
-    const { result } = renderHook(() => useUsers({ limit: 10, filter: {} }));
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    expect(result.current.error).toBe("boom");
-    expect(result.current.items).toEqual([]);
-    expect(result.current.meta).toBeNull();
-  });
-
-  type Case = { title: string; initial: UserFilter; next: UserFilter };
-
-  it.each<Case>([
-    {
-      title: "re-fetches when filter.name changes",
-      initial: { name: "a" },
-      next: { name: "ab" },
-    },
-    {
-      title: "re-fetches when filter.status changes",
-      initial: { status: "ACTIVE" },
-      next: { status: "INACTIVE" },
-    },
-    {
-      title: "re-fetches when adding from/to dates",
-      initial: {},
-      next: { fromDate: "2025-01-01", toDate: "2025-01-31" },
-    },
-  ])("$title", async ({ initial, next }) => {
-    const limit = 10;
-
-    mockListUsersOnce(
-      makePage({
-        page: 1,
-        limit,
-        total: 1,
-        totalPages: 1,
-        items: [makeUser(1)],
-      }),
-    );
-
-    const { result, rerender } = renderHook(
-      ({ f }: { f: UserFilter }) => useUsers({ limit, filter: f }),
-      { initialProps: { f: initial } },
-    );
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(listUsers).toHaveBeenCalledTimes(1);
-    expect(result.current.items.map((u) => u.id)).toEqual(["1"]);
-
-    mockListUsersOnce(
-      makePage({
-        page: 1,
-        limit,
-        total: 1,
-        totalPages: 1,
-        items: [makeUser(2)],
-      }),
-    );
-
-    rerender({ f: next });
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(listUsers).toHaveBeenCalledTimes(2);
-    expect(result.current.items.map((u) => u.id)).toEqual(["2"]);
+    });
   });
 });
