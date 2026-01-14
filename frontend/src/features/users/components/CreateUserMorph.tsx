@@ -114,14 +114,25 @@ export function CreateUserMorph({
 
   const hasCollapsedFace = collapsedContent != null;
 
-  // NEW: trigger nod animation when nudgeKey changes while open
   useEffect(() => {
     if (!open) return;
     if (prefersReducedMotion) return;
 
-    setNod(true);
-    const t = window.setTimeout(() => setNod(false), NOD_MS);
-    return () => window.clearTimeout(t);
+    let raf = 0;
+    let timeout = 0;
+
+    raf = window.requestAnimationFrame(() => {
+      setNod(true);
+
+      timeout = window.setTimeout(() => {
+        setNod(false);
+      }, NOD_MS);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.clearTimeout(timeout);
+    };
   }, [nudgeKey, open, prefersReducedMotion]);
 
   // Hide anchor while open; show after collapse completes (overlay-only safe)
