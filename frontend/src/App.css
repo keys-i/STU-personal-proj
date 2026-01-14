@@ -141,6 +141,24 @@ body {
   padding: clamp(12px, 2.2vw, 22px);
 }
 
+.topbarCenterWide {
+  flex: 1;
+  min-width: 0; /* important so the input can shrink/grow correctly */
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.searchBarWide {
+  flex: 1;
+  min-width: 400px; /* adjust as you like */
+}
+
 /* ---------------------------
    Form + buttons defaults
 ---------------------------- */

@@ -3,12 +3,31 @@ import type { User } from "../types";
 import { formatDate } from "../../../shared/utils/date";
 import { useSwipeAction } from "../../../shared/hooks/useSwipeActions";
 
+function StatusPill({ status }: { status: User["status"] }) {
+  const cls =
+    status === "ACTIVE"
+      ? "statusPill statusPillActive"
+      : status === "INACTIVE"
+        ? "statusPill statusPillInactive"
+        : "statusPill statusPillSuspended";
+
+  return <span className={cls}>{status}</span>;
+}
+
 type Props = {
   users: User[];
   loading: boolean;
 
   limit: number;
   onLimitChange: (n: number) => void;
+
+  // controlled pagination
+  page: number;
+  totalPages: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  onPrevPage: () => void;
+  onNextPage: () => void;
 
   onEdit: (u: User) => void;
   onDelete: (id: string) => void;
@@ -64,8 +83,8 @@ function UsersTableRow(props: {
   const { user, onEdit, onDelete } = props;
 
   const swipe = useSwipeAction({
-    onSwipeRight: () => onEdit(user), // right = edit
-    onSwipeLeft: () => onDelete(user.id), // left = delete
+    onSwipeRight: () => onEdit(user),
+    onSwipeLeft: () => onDelete(user.id),
     thresholdPx: 90,
     maxRevealPx: 140,
   });
@@ -93,7 +112,7 @@ function UsersTableRow(props: {
 
   return (
     <div className="swipeWrap" data-swiping={String(swiping)}>
-      {/* Behind layer */}
+      {/* behind layer */}
       <div className="swipeBehind" aria-hidden="true">
         <div className="swipeLeft" style={{ width: leftW }}>
           <div
@@ -120,9 +139,9 @@ function UsersTableRow(props: {
         </div>
       </div>
 
-      {/* Front row */}
+      {/* front row */}
       <div
-        className="trow swipeRow usersRow"
+        className="trow swipeRow usersRow usersGrid"
         role="row"
         {...swipe.bind}
         style={{
@@ -132,27 +151,33 @@ function UsersTableRow(props: {
         }}
         aria-label={`User row ${user.name}`}
       >
-        {/* Name + ID subtext */}
-        <div role="cell" className="usersCellName">
+        <div role="cell" className="usersCell usersCellName colName">
           <div className="usersName">{user.name}</div>
           <div className="small muted mono usersIdSub" title={user.id}>
             {user.id}
           </div>
         </div>
 
-        <div role="cell" title={user.email} className="usersEmail">
+        <div
+          role="cell"
+          title={user.email}
+          className="usersCell usersEmail colEmail"
+        >
           {user.email}
         </div>
 
-        <div role="cell" className="usersStatus">
-          {user.status}
+        <div role="cell" className="usersCell usersStatus colStatus">
+          <StatusPill status={user.status} />
         </div>
 
-        <div role="cell" className="usersRole">
+        <div role="cell" className="usersCell usersRole colRole">
           {user.role ?? "—"}
         </div>
 
-        <div role="cell" className="small muted usersCreated">
+        <div
+          role="cell"
+          className="usersCell usersCreated colCreated small muted"
+        >
           {formatDate(createdAt)}
         </div>
       </div>
@@ -165,6 +190,12 @@ export function UsersTable({
   loading,
   limit,
   onLimitChange,
+  page,
+  totalPages,
+  hasPrev,
+  hasNext,
+  onPrevPage,
+  onNextPage,
   onEdit,
   onDelete,
 }: Props) {
@@ -177,28 +208,21 @@ export function UsersTable({
 
   const columns = useMemo(
     () => [
-      { key: "name", label: "Name" },
-      { key: "email", label: "Email" },
-      { key: "status", label: "Status" },
-      { key: "role", label: "Role" },
-      { key: "createdAt", label: "Created" },
+      { key: "name", label: "Name", className: "colName" },
+      { key: "email", label: "Email", className: "colEmail" },
+      { key: "status", label: "Status", className: "colStatus" },
+      { key: "role", label: "Role", className: "colRole" },
+      { key: "createdAt", label: "Created", className: "colCreated" },
     ],
     [],
   );
 
   function commitLimit(): void {
     const s = limitDraft.trim();
-
-    if (s === "") {
-      setLimitDraft(String(limit));
-      setEditingLimit(false);
-      return;
-    }
-
     const raw = Number(s);
 
-    if (!Number.isFinite(raw)) {
-      setLimitDraft(String(limit));
+    if (s === "" || !Number.isFinite(raw)) {
+      setLimitDraft("");
       setEditingLimit(false);
       return;
     }
@@ -254,9 +278,13 @@ export function UsersTable({
       </div>
 
       <div className="table usersTable" role="table" aria-label="Users table">
-        <div className="thead usersThead" role="row">
+        <div className="thead usersThead usersGrid" role="row">
           {columns.map((c) => (
-            <div key={c.key} role="columnheader">
+            <div
+              key={c.key}
+              role="columnheader"
+              className={`usersTh ${c.className}`}
+            >
               {c.label}
             </div>
           ))}
@@ -274,6 +302,29 @@ export function UsersTable({
             />
           ))
         )}
+      </div>
+
+      {/* bottom pagination */}
+      <div className="usersPager">
+        <button
+          type="button"
+          onClick={onPrevPage}
+          disabled={!hasPrev || loading}
+        >
+          Prev
+        </button>
+
+        <div className="muted small">
+          Page <strong>{page}</strong> / <strong>{totalPages}</strong>
+        </div>
+
+        <button
+          type="button"
+          onClick={onNextPage}
+          disabled={!hasNext || loading}
+        >
+          Next
+        </button>
       </div>
     </div>
   );

@@ -1,42 +1,40 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { listUsers, type UserFilter } from "../api";
 import type { Paginated, User } from "../types";
 
 type Meta = Paginated<User>["meta"];
 
-export function useUsers(args: { limit: number; filter: UserFilter }) {
-  const { limit, filter } = args;
+export function useUsers(args: {
+  page: number;
+  limit: number;
+  filter: UserFilter;
+}) {
+  const { page, limit, filter } = args;
 
   const [items, setItems] = useState<User[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // track current page without causing re-renders
-  const pageRef = useRef(1);
-
-  // stable key for deep compare
-  const filterKey = useMemo(
-    () => JSON.stringify({ limit, filter }),
-    [limit, filter],
+  // stable key for deep compare (includes page so switching pages fetches new slice)
+  const requestKey = useMemo(
+    () => JSON.stringify({ page, limit, filter }),
+    [page, limit, filter],
   );
 
   const loadPage = useCallback(
-    async (page: number, mode: "replace" | "append") => {
+    async (p: number) => {
       setLoading(true);
       setError(null);
 
       try {
-        const res = await listUsers({ page, limit, filter });
-
-        pageRef.current = res.meta.page;
+        const res = await listUsers({ page: p, limit, filter });
         setMeta(res.meta);
-
-        setItems((prev) =>
-          mode === "replace" ? res.data : [...prev, ...res.data],
-        );
+        setItems(res.data);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Request failed");
+        setItems([]);
+        setMeta(null);
       } finally {
         setLoading(false);
       }
@@ -44,28 +42,18 @@ export function useUsers(args: { limit: number; filter: UserFilter }) {
     [filter, limit],
   );
 
+  // refresh current page (don’t hard reset to page 1; parent owns page)
   const refresh = useCallback(async () => {
-    pageRef.current = 1;
-    await loadPage(1, "replace");
-  }, [loadPage]);
-
-  const loadNext = useCallback(async () => {
-    if (loading) return;
-    if (!meta) return;
-
-    const hasNext = meta.page < meta.totalPages;
-    if (!hasNext) return;
-
-    const next = pageRef.current + 1;
-    if (next > meta.totalPages) return;
-
-    await loadPage(next, "append");
-  }, [loadPage, loading, meta]);
+    await loadPage(page);
+  }, [loadPage, page]);
 
   useEffect(() => {
-    void refresh();
+    void loadPage(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterKey]);
+  }, [requestKey]);
+
+  const hasNext = meta ? meta.page < meta.totalPages : false;
+  const hasPrev = meta ? meta.page > 1 : false;
 
   return {
     items,
@@ -73,7 +61,7 @@ export function useUsers(args: { limit: number; filter: UserFilter }) {
     loading,
     error,
     refresh,
-    loadNext,
-    hasNext: meta ? meta.page < meta.totalPages : false,
+    hasNext,
+    hasPrev,
   };
 }

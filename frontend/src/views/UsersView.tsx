@@ -47,6 +47,7 @@ export function UsersView() {
   const { theme, toggle } = useTheme();
 
   const [limit, setLimit] = useState(10);
+  const [page, setPage] = useState(1);
 
   const [filterState, setFilterState] = useState<FilterState>({
     name: "",
@@ -55,7 +56,6 @@ export function UsersView() {
     toDate: "",
   });
 
-  // local search input, debounced into filterState.name (NO useEffect)
   const [searchDraft, setSearchDraft] = useState("");
   const searchDebounceRef = useRef<number | null>(null);
 
@@ -69,15 +69,18 @@ export function UsersView() {
     [filterState],
   );
 
+  // IMPORTANT: pass page into the hook so it fetches the correct slice
   const {
     items: users,
     meta,
     loading,
     error,
     refresh,
-    loadNext,
-    hasNext,
-  } = useUsers({ limit, filter });
+  } = useUsers({
+    page,
+    limit,
+    filter,
+  });
 
   const [filtersOpen, setFiltersOpen] = useState(false);
 
@@ -120,6 +123,7 @@ export function UsersView() {
 
   async function onDelete(id: string) {
     await softDeleteUser(id);
+    // if deleting the last item on the page, you might want to clamp page after refresh
     await refresh();
   }
 
@@ -132,18 +136,34 @@ export function UsersView() {
     setCreateOpen(false);
     setCreateForm({ name: "", email: "", status: "ACTIVE", role: null });
 
+    // usually reset to first page so the new record is visible (optional)
+    setPage(1);
     await refresh();
   }
-
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-  // keep your existing observer effect if you want; it does not set state synchronously
 
   const noUsers = !loading && users.length === 0;
 
   async function onLimitChange(next: number) {
     const safe = Math.min(100, Math.max(1, next));
     setLimit(safe);
+    setPage(1); // IMPORTANT: changing limit should reset pagination
     await refresh();
+  }
+
+  // controlled pagination handlers
+  function goPrev() {
+    setPage((p) => Math.max(1, p - 1));
+  }
+
+  function goNext() {
+    const tp = meta?.totalPages ?? 1;
+    setPage((p) => Math.min(tp, p + 1));
+  }
+
+  // if filters change and you want to reset to page 1, do it where you apply filters
+  function applyFilters() {
+    setPage(1);
+    void refresh();
   }
 
   return (
@@ -163,7 +183,73 @@ export function UsersView() {
           </div>
         </div>
 
-        <div className="topbarCenter">
+        <div className="topbarCenter topbarCenterWide">
+          <div className="searchRow">
+            <div className="searchBar searchBarWide">
+              <span className="searchBarIcon" aria-hidden="true">
+                <SearchIcon />
+              </span>
+
+              <input
+                value={searchDraft}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSearchDraft(v);
+
+                  if (searchDebounceRef.current != null) {
+                    window.clearTimeout(searchDebounceRef.current);
+                  }
+                  searchDebounceRef.current = window.setTimeout(() => {
+                    setFilterState((prev) =>
+                      prev.name === v ? prev : { ...prev, name: v },
+                    );
+                  }, 250);
+                }}
+                placeholder="Search by name…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    if (searchDebounceRef.current != null) {
+                      window.clearTimeout(searchDebounceRef.current);
+                      searchDebounceRef.current = null;
+                    }
+                    setFilterState((prev) =>
+                      prev.name === searchDraft
+                        ? prev
+                        : { ...prev, name: searchDraft },
+                    );
+                    setPage(1);
+                    void refresh();
+                  }
+                }}
+              />
+
+              <button
+                type="button"
+                className={`searchBarBtn ${filtersOpen ? "searchBarBtnActive" : ""}`}
+                onClick={() => setFiltersOpen((v) => !v)}
+                aria-label="Filters"
+                title="Filters"
+              >
+                <SlidersIcon />
+              </button>
+            </div>
+
+            <button
+              ref={newBtnRef}
+              type="button"
+              className={`iconBtn parallaxBtn ${noUsers ? "iconBtnPulse" : ""}`}
+              onClick={() => setCreateOpen(true)}
+              title="Create user"
+              aria-label="Create user"
+              style={{ visibility: createOpen ? "hidden" : "visible" }}
+            >
+              <PencilIcon />
+              <span>New</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="topbarRight">
           <ThemeToggle
             checked={theme === "dark"}
             onChange={(checked) => {
@@ -171,68 +257,6 @@ export function UsersView() {
               if (theme !== want) toggle();
             }}
           />
-
-          <div className="searchBar">
-            <span className="searchBarIcon" aria-hidden="true">
-              <SearchIcon />
-            </span>
-
-            <input
-              value={searchDraft}
-              onChange={(e) => {
-                const v = e.target.value;
-                setSearchDraft(v);
-
-                if (searchDebounceRef.current != null) {
-                  window.clearTimeout(searchDebounceRef.current);
-                }
-                searchDebounceRef.current = window.setTimeout(() => {
-                  setFilterState((prev) =>
-                    prev.name === v ? prev : { ...prev, name: v },
-                  );
-                }, 250);
-              }}
-              placeholder="Search by name…"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  if (searchDebounceRef.current != null) {
-                    window.clearTimeout(searchDebounceRef.current);
-                    searchDebounceRef.current = null;
-                  }
-                  setFilterState((prev) =>
-                    prev.name === searchDraft
-                      ? prev
-                      : { ...prev, name: searchDraft },
-                  );
-                }
-              }}
-            />
-
-            <button
-              type="button"
-              className={`searchBarBtn ${filtersOpen ? "searchBarBtnActive" : ""}`}
-              onClick={() => setFiltersOpen((v) => !v)}
-              aria-label="Filters"
-              title="Filters"
-            >
-              <SlidersIcon />
-            </button>
-          </div>
-        </div>
-
-        <div className="topbarRight">
-          <button
-            ref={newBtnRef}
-            type="button"
-            className={`iconBtn parallaxBtn ${noUsers ? "iconBtnPulse" : ""}`}
-            onClick={() => setCreateOpen(true)}
-            title="Create user"
-            aria-label="Create user"
-            style={{ visibility: createOpen ? "hidden" : "visible" }}
-          >
-            <PencilIcon />
-            <span>New</span>
-          </button>
         </div>
       </header>
 
@@ -242,7 +266,7 @@ export function UsersView() {
         onClose={() => setCreateOpen(false)}
         title="Create user"
         subtitle="Quick add. Validates inputs."
-        collapsedContent={undefined} // or just omit the prop
+        collapsedContent={undefined}
       >
         <CreateUserForm
           value={createForm}
@@ -259,7 +283,7 @@ export function UsersView() {
             onChange={(next) => setFilterState(next)}
             limit={limit}
             onLimitChange={(n) => void onLimitChange(n)}
-            onApply={() => void refresh()}
+            onApply={applyFilters}
           />
         </section>
       )}
@@ -270,42 +294,20 @@ export function UsersView() {
         {noUsers ? (
           <EmptyUsersState targetRef={newBtnRef} />
         ) : (
-          <>
-            <UsersTable
-              users={users}
-              loading={loading}
-              limit={limit}
-              onLimitChange={(n) => void onLimitChange(n)}
-              onEdit={onEdit}
-              onDelete={(id) => void onDelete(id)}
-            />
-
-            <div ref={sentinelRef} style={{ height: 1 }} />
-            <div className="row space-between" style={{ marginTop: 14 }}>
-              <div className="muted small">
-                Page <strong>{meta?.page ?? 1}</strong> /{" "}
-                <strong>{meta?.totalPages ?? 1}</strong> ·{" "}
-                <strong>{meta?.total ?? 0}</strong> users
-              </div>
-
-              <div className="row" style={{ gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => void refresh()}
-                  disabled={loading}
-                >
-                  Refresh
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void loadNext()}
-                  disabled={!hasNext || loading}
-                >
-                  {hasNext ? "Load more" : "End"}
-                </button>
-              </div>
-            </div>
-          </>
+          <UsersTable
+            users={users}
+            loading={loading}
+            limit={limit}
+            onLimitChange={(n) => void onLimitChange(n)}
+            page={page}
+            totalPages={meta?.totalPages ?? 1}
+            hasPrev={page > 1}
+            hasNext={page < (meta?.totalPages ?? 1)}
+            onPrevPage={goPrev}
+            onNextPage={goNext}
+            onEdit={onEdit}
+            onDelete={(id) => void onDelete(id)}
+          />
         )}
       </section>
 

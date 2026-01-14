@@ -3,6 +3,7 @@ import axios, {
   type AxiosInstance,
   type AxiosResponse,
 } from "axios";
+import qs from "qs"; // <-- add this
 import type {
   CreateUserInput,
   Paginated,
@@ -16,8 +17,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL?.trim() || "/api";
 export type UserFilter = {
   name?: string;
   status?: UserStatus;
-  fromDate?: string; // ISO
-  toDate?: string; // ISO
+  fromDate?: string;
+  toDate?: string;
 };
 
 type ErrorPayload = {
@@ -47,10 +48,16 @@ function createApi(): AxiosInstance {
   const instance = axios.create({
     baseURL: API_BASE,
     headers: { "Content-Type": "application/json" },
-    // withCredentials: true,
+
+    // IMPORTANT: ensure bracket-style params are serialized consistently
+    // (will still be URL-encoded in the address bar; that's normal)
+    paramsSerializer: (params) =>
+      qs.stringify(params, {
+        encodeValuesOnly: true,
+        arrayFormat: "brackets",
+      }),
   });
 
-  // Convert axios errors into normal Error with a nice message
   instance.interceptors.response.use(
     (res: AxiosResponse) => res,
     (err: unknown) => Promise.reject(new Error(toErrorMessage(err))),
@@ -65,17 +72,20 @@ function buildParams(args: {
   page: number;
   limit: number;
   filter?: UserFilter;
-}): Record<string, string | number> {
+}) {
   const { page, limit, filter } = args;
 
-  const params: Record<string, string | number> = { page, limit };
-
-  if (filter?.name) params["filter[name]"] = filter.name;
-  if (filter?.status) params["filter[status]"] = filter.status;
-  if (filter?.fromDate) params["filter[fromDate]"] = filter.fromDate;
-  if (filter?.toDate) params["filter[toDate]"] = filter.toDate;
-
-  return params;
+  // build as a nested object (cleaner), qs will serialize to filter[name]=...
+  return {
+    page,
+    limit,
+    filter: {
+      ...(filter?.name ? { name: filter.name } : {}),
+      ...(filter?.status ? { status: filter.status } : {}),
+      ...(filter?.fromDate ? { fromDate: filter.fromDate } : {}),
+      ...(filter?.toDate ? { toDate: filter.toDate } : {}),
+    },
+  };
 }
 
 export async function listUsers(args: {

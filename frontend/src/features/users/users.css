@@ -179,7 +179,6 @@
   max-width: 760px;
   margin: 0 auto;
 
-  /* keep search and NEW on the same row (desktop/tablet) */
   display: flex;
   flex-direction: row;
   gap: 10px;
@@ -187,7 +186,6 @@
   align-items: center;
 }
 
-/* Theme toggle stays inline; don’t force it centered vertically */
 .usersView .topbarCenter .themeToggle {
   margin: 0;
   flex: 0 0 auto;
@@ -242,8 +240,22 @@
 }
 
 /* ---------------------------
-   Users Table
+   Users Table (fixed widths + pagination)
 ---------------------------- */
+
+.usersView .usersTableWrap {
+  /* fixed column widths (tune here) */
+  --col-name: 260px;
+  --col-email: 340px;
+  --col-status: 150px;
+  --col-role: 150px;
+  --col-created: 170px;
+
+  /* shared gap/padding tokens */
+  --col-gap: clamp(12px, 1.2vw, 20px);
+  --row-pad-y: clamp(12px, 1.25vw, 22px);
+  --row-pad-x: clamp(14px, 1.4vw, 26px);
+}
 
 .usersView .table {
   border: 1px solid var(--border);
@@ -254,20 +266,26 @@
 .usersView .thead,
 .usersView .trow {
   display: grid;
+  grid-template-columns:
+    var(--col-name)
+    var(--col-email)
+    var(--col-status)
+    var(--col-role)
+    var(--col-created);
 
-  grid-template-columns: 1.35fr 1.7fr 0.8fr 0.8fr 1.05fr;
-
-  gap: clamp(12px, 1.2vw, 20px);
-  padding: clamp(12px, 1.25vw, 22px) clamp(14px, 1.4vw, 26px);
+  gap: var(--col-gap);
+  padding: var(--row-pad-y) var(--row-pad-x);
   align-items: center;
 }
 
+/* header */
 .usersView .thead {
   background: var(--thead);
   font-weight: 700;
   font-size: clamp(11px, 0.85vw, 13px);
 }
 
+/* row */
 .usersView .trow {
   border-top: 1px solid var(--row-border);
   font-size: 14px;
@@ -282,54 +300,151 @@
   color: var(--muted);
 }
 
+/* Ensure cells don’t break the grid */
+.usersView .usersCell,
+.usersView .thead > div {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* optional extra tightening for id */
+.usersView .usersIdSub {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* pagination row (bottom buttons) */
+.usersView .usersPager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.usersView .usersPager button {
+  min-width: 88px;
+}
+
+/* Wide screens: slightly bigger columns */
 @media (min-width: 1100px) {
-  .usersView .thead,
-  .usersView .trow {
-    grid-template-columns: 1.7fr 2.6fr 1fr 1fr 1.3fr;
-    padding: 18px 22px;
-    gap: 18px;
+  .usersView .usersTableWrap {
+    --col-name: 320px;
+    --col-email: 440px;
+    --col-status: 170px;
+    --col-role: 170px;
+    --col-created: 190px;
   }
 
   .usersView .trow {
     min-height: 76px;
   }
+
+  .usersView .thead,
+  .usersView .trow {
+    padding: 18px 22px;
+    gap: 18px;
+  }
 }
 
 @media (min-width: 1400px) {
-  .usersView .thead,
-  .usersView .trow {
-    grid-template-columns: 2.1fr 3.2fr 1.1fr 1.1fr 1.4fr;
-    padding: 20px 26px;
-    gap: 22px;
+  .usersView .usersTableWrap {
+    --col-name: 360px;
+    --col-email: 520px;
+    --col-status: 190px;
+    --col-role: 190px;
+    --col-created: 210px;
   }
 
   .usersView .trow {
     min-height: 86px;
   }
-}
 
-@media (max-width: 900px) {
+  .usersView .thead,
   .usersView .trow {
-    min-height: 62px;
-    font-size: 14px;
+    padding: 20px 26px;
+    gap: 22px;
   }
 }
 
-/* <= 520px: tighter */
-@media (max-width: 520px) {
+/* <= 900px: hide Role + Created like you already do, and collapse grid to 3 cols */
+@media (max-width: 900px) {
+  .usersView .topbar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .usersView .topbarCenter {
+    max-width: 100%;
+    justify-content: center;
+  }
+
+  .usersView .topbarRight {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  /* switch to 3 columns (Name / Email / Status) */
+  .usersView .thead,
+  .usersView .trow {
+    grid-template-columns:
+      220px
+      1fr
+      140px;
+  }
+
+  /* hide 4th + 5th cells */
+  .usersView .thead div:nth-child(n + 4),
+  .usersView .trow div:nth-child(n + 4) {
+    display: none;
+  }
+
+  .usersView .filtersAdvanced {
+    grid-template-columns: 1fr 1fr;
+  }
+
   .usersView .thead,
   .usersView .trow {
     padding: 12px 14px;
     gap: 12px;
   }
+}
 
-  .usersView .trow {
-    min-height: 56px;
-    font-size: 13.5px;
+/* <= 520px: wrap toggle + search, make NEW full-width if needed */
+@media (max-width: 520px) {
+  .usersView .topbarCenter {
+    flex-wrap: wrap;
+    gap: 10px;
   }
 
-  .usersView .thead {
-    font-size: 11.5px;
+  .usersView .topbarCenter .themeToggle {
+    order: 0;
+  }
+
+  .usersView .searchBar {
+    order: 1;
+    flex: 1 1 100%;
+  }
+
+  .usersView .iconBtn {
+    width: 100%;
+    max-width: 240px;
+  }
+
+  .usersView .topbarRight {
+    width: 100%;
+  }
+
+  /* tighten 3-col layout a bit */
+  .usersView .thead,
+  .usersView .trow {
+    grid-template-columns:
+      180px
+      1fr
+      120px;
   }
 }
 
@@ -344,6 +459,31 @@
   .usersView .trow {
     min-height: 52px;
     font-size: 13px;
+  }
+
+  .usersView .thead {
+    font-size: 11.5px;
+  }
+
+  .usersView .card {
+    padding: 14px;
+  }
+
+  .usersView .searchBar input {
+    padding: 11px 50px 11px 38px;
+  }
+
+  .usersView .iconBtn {
+    max-width: 100%;
+  }
+
+  /* even tighter columns on tiny screens */
+  .usersView .thead,
+  .usersView .trow {
+    grid-template-columns:
+      160px
+      1fr
+      110px;
   }
 }
 
@@ -450,8 +590,6 @@
 
 .usersView .emptyState {
   position: relative;
-
-  /* Responsive “big enough”: scales with viewport width */
   width: min(980px, 100%);
   margin: 14px auto 0 auto;
 
@@ -640,21 +778,17 @@
 
 /* ---------------------------
    NewFloatingMenu
-   (opens from NEW button area, collapses to top-right)
 ---------------------------- */
 
-/* Put button + menu under this wrapper */
 .usersView .newMenuWrap {
   position: relative;
   display: inline-flex;
 }
 
-/* keep this wrapper from affecting layout */
 .usersView .menuAnchor {
   display: contents;
 }
 
-/* Menu base */
 .usersView .floatingMenu {
   position: absolute;
   top: calc(100% + 10px);
@@ -677,7 +811,6 @@
     opacity 180ms var(--ease-swoop);
 }
 
-/* Alignment */
 .usersView .floatingMenuRight {
   right: 0;
 }
@@ -685,7 +818,6 @@
   left: 0;
 }
 
-/* Open */
 .usersView .floatingMenuOpen {
   opacity: 1;
   pointer-events: auto;
@@ -699,7 +831,6 @@
   transform-origin: 100% 0%;
 }
 
-/* Closing */
 .usersView .floatingMenuClosing {
   transform-origin: 100% 0%;
   opacity: 0;
@@ -710,7 +841,6 @@
     opacity 120ms var(--ease-swoop);
 }
 
-/* Items */
 .usersView .menuItem {
   width: 100%;
   display: grid;
@@ -799,7 +929,6 @@
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
 }
 
-/* Face overlay (collapsed button visual) */
 .usersView .morphFace {
   position: absolute;
   inset: 0;
@@ -826,7 +955,6 @@
   color: var(--fg);
 }
 
-/* Inner fills card; body owns remaining space */
 .usersView .morphInner {
   height: 100%;
   display: flex;
@@ -863,7 +991,6 @@
   margin-top: 2px;
 }
 
-/* Body takes remaining height */
 .usersView .morphBody {
   flex: 1 1 auto;
   min-height: 0;
@@ -875,13 +1002,11 @@
    Swipe micro-feedback (UsersTableRow)
 ---------------------------- */
 
-/* wrap each row: clips the behind layer */
 .usersView .swipeWrap {
   position: relative;
   overflow: hidden;
 }
 
-/* behind layer sits under the moving row */
 .usersView .swipeBehind {
   position: absolute;
   inset: 0;
@@ -890,7 +1015,6 @@
   align-items: stretch;
   pointer-events: none;
 
-  /* hidden until swiping */
   opacity: 0;
   transition: opacity 80ms linear;
 }
@@ -899,7 +1023,6 @@
   opacity: 1;
 }
 
-/* reveal panels (their width is controlled inline from dx) */
 .usersView .swipeLeft,
 .usersView .swipeRight {
   height: 100%;
@@ -908,20 +1031,17 @@
   overflow: hidden;
 }
 
-/* Edit = yellow (right swipe reveals left panel) */
 .usersView .swipeLeft {
   justify-content: flex-start;
-  background: #f4c84a; /* yellow */
+  background: #f4c84a;
 }
 
-/* Delete = red (left swipe reveals right panel) */
 .usersView .swipeRight {
   margin-left: auto;
   justify-content: flex-end;
-  background: #e04343; /* red */
+  background: #e04343;
 }
 
-/* action content inside reveal */
 .usersView .swipeAction {
   display: inline-flex;
   align-items: center;
@@ -945,7 +1065,6 @@
   transform-origin: left center;
 }
 
-/* readable text per background */
 .usersView .swipeActionEdit {
   color: rgba(0, 0, 0, 0.82);
 }
@@ -953,13 +1072,11 @@
   color: rgba(255, 255, 255, 0.95);
 }
 
-/* moving foreground row */
 .usersView .swipeRow {
   position: relative;
   z-index: 1;
   background: transparent;
 
-  /* allow vertical scroll; hook handles horizontal */
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
@@ -967,12 +1084,10 @@
   will-change: transform;
 }
 
-/* subtle “lift” while swiping */
 .usersView .swipeWrap[data-swiping="true"] .swipeRow {
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
 }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .usersView .swipeBehind {
     transition: none;
@@ -981,85 +1096,63 @@
     box-shadow: none;
   }
 }
+
 /* ---------------------------
-   Responsive rules
+   Status pill badges
 ---------------------------- */
 
-/* <= 900px: stack layout but keep topbar usable */
-@media (max-width: 900px) {
-  .usersView .topbar {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .usersView .topbarCenter {
-    max-width: 100%;
-    justify-content: center;
-  }
-
-  .usersView .topbarRight {
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .usersView .thead,
-  .usersView .trow {
-    grid-template-columns: 1.2fr 1.6fr 0.8fr 0.8fr 1.1fr;
-  }
-
-  .usersView .thead div:nth-child(n + 4),
-  .usersView .trow div:nth-child(n + 4) {
-    display: none;
-  }
-
-  .usersView .filtersAdvanced {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .usersView .thead,
-  .usersView .trow {
-    padding: 12px 14px;
-    gap: 12px;
-  }
+.statusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  border: 1px solid transparent;
+  user-select: none;
+  white-space: nowrap;
 }
 
-/* <= 520px: wrap toggle + search, make NEW full-width if needed */
-@media (max-width: 520px) {
-  .usersView .topbarCenter {
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-
-  .usersView .topbarCenter .themeToggle {
-    order: 0;
-  }
-
-  .usersView .searchBar {
-    order: 1;
-    flex: 1 1 100%;
-  }
-
-  .usersView .iconBtn {
-    width: 100%;
-    max-width: 240px;
-  }
-
-  .usersView .topbarRight {
-    width: 100%;
-  }
+.statusPillActive {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.35);
+  color: rgb(22, 163, 74);
 }
 
-/* <= 360px: reduce paddings slightly */
-@media (max-width: 360px) {
-  .usersView .card {
-    padding: 14px;
-  }
+.statusPillInactive {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: rgb(220, 38, 38);
+}
 
-  .usersView .searchBar input {
-    padding: 11px 50px 11px 38px;
-  }
+.statusPillSuspended {
+  background: rgba(234, 179, 8, 0.16);
+  border-color: rgba(234, 179, 8, 0.4);
+  color: rgb(202, 138, 4);
+}
 
-  .usersView .iconBtn {
-    max-width: 100%;
-  }
+.usersView .usersGrid > div {
+  min-width: 0;
+}
+
+.usersView .usersGrid {
+  display: grid;
+  grid-template-columns: 160px 1fr 110px 110px 140px;
+  gap: 12px;
+  padding: 12px 14px;
+  align-items: center;
+  min-width: 0;
+}
+
+.usersView .usersEmail,
+.usersView .usersIdSub,
+.usersView .usersName,
+.usersView .usersRole,
+.usersView .usersCreated {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }

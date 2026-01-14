@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { within, render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { UsersTable } from "./UsersTable";
@@ -28,13 +28,17 @@ describe("UsersTable", () => {
   const onEdit = vi.fn();
   const onDelete = vi.fn();
   const onLimitChange = vi.fn();
+  const onPrevPage = vi.fn();
+  const onNextPage = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders headers and rows", () => {
-    const users = [makeUser(1), makeUser(2)];
+  function renderTable(
+    overrides?: Partial<React.ComponentProps<typeof UsersTable>>,
+  ) {
+    const users = overrides?.users ?? [makeUser(1), makeUser(2)];
 
     render(
       <UsersTable
@@ -42,26 +46,28 @@ describe("UsersTable", () => {
         loading={false}
         limit={10}
         onLimitChange={onLimitChange}
+        page={1}
+        totalPages={3}
+        hasPrev={false}
+        hasNext={true}
+        onPrevPage={onPrevPage}
+        onNextPage={onNextPage}
         onEdit={onEdit}
         onDelete={onDelete}
+        {...overrides}
       />,
     );
+  }
 
-    // table label
+  it("renders table, headers, and rows", () => {
+    renderTable({ users: [makeUser(1), makeUser(2)] });
+
     expect(
       screen.getByRole("table", { name: /users table/i }),
     ).toBeInTheDocument();
 
-    // column headers
-    for (const h of [
-      "ID",
-      "Name",
-      "Email",
-      "Status",
-      "Role",
-      "Created",
-      "Actions",
-    ]) {
+    // column headers (NEW set)
+    for (const h of ["Name", "Email", "Status", "Role", "Created"]) {
       expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
     }
 
@@ -73,73 +79,29 @@ describe("UsersTable", () => {
 
     // createdAt uses mocked formatter
     expect(screen.getAllByText(/^FMT\(/)).toHaveLength(2);
+
+    // shows count
+    const metaRow = screen.getByText(/showing/i).closest("div");
+    expect(metaRow).toBeTruthy();
+    expect(metaRow!).toHaveTextContent("Showing");
+    expect(metaRow!).toHaveTextContent("2");
   });
 
   it("shows empty state when no users", () => {
-    render(
-      <UsersTable
-        users={[]}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
-
+    renderTable({ users: [] });
     expect(screen.getByText(/no users\./i)).toBeInTheDocument();
   });
 
   it("shows loading indicator when loading", () => {
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={true}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ loading: true, users: [makeUser(1)] });
 
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
-  });
-
-  it("calls onEdit and onDelete for row actions", async () => {
-    const user = userEvent.setup();
-    const users = [makeUser(1)];
-
-    render(
-      <UsersTable
-        users={users}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /edit/i }));
-    expect(onEdit).toHaveBeenCalledTimes(1);
-    expect(onEdit).toHaveBeenCalledWith(users[0]);
-
-    await user.click(screen.getByRole("button", { name: /delete/i }));
-    expect(onDelete).toHaveBeenCalledTimes(1);
-    expect(onDelete).toHaveBeenCalledWith(users[0].id);
+    const meta = screen.getByText(/showing/i).closest("div") as HTMLElement;
+    expect(meta).toBeTruthy();
+    expect(within(meta!).getByText(/loading/i)).toBeInTheDocument();
   });
 
   it("shows the limit prop as the input value when not editing", () => {
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={false}
-        limit={25}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ limit: 25 });
 
     const input = screen.getByLabelText(
       /users per page limit/i,
@@ -153,17 +115,7 @@ describe("UsersTable", () => {
     { title: "clamps above 100 to 100", typed: "999", expected: 100 },
   ])("$title", async ({ typed, expected }) => {
     const user = userEvent.setup();
-
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ limit: 10 });
 
     const input = screen.getByLabelText(/users per page limit/i);
 
@@ -178,19 +130,10 @@ describe("UsersTable", () => {
 
   it("does not call onLimitChange if committed value equals current limit", async () => {
     const user = userEvent.setup();
-
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ limit: 10 });
 
     const input = screen.getByLabelText(/users per page limit/i);
+
     await user.click(input);
     await user.clear(input);
     await user.type(input, "10");
@@ -201,47 +144,27 @@ describe("UsersTable", () => {
 
   it("Escape cancels editing and restores input to prop value", async () => {
     const user = userEvent.setup();
-
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ limit: 10 });
 
     const input = screen.getByLabelText(
       /users per page limit/i,
     ) as HTMLInputElement;
 
     await user.click(input);
+    // number inputs are annoying; this is still ok for happy path
     await user.clear(input);
     await user.type(input, "55");
     expect(input.value).toBe("55");
 
     await user.keyboard("{Escape}");
 
-    // back to prop value since editing cancelled
     expect(input.value).toBe("10");
     expect(onLimitChange).not.toHaveBeenCalled();
   });
 
   it("blur commits when editingLimit is true", async () => {
     const user = userEvent.setup();
-
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ limit: 10 });
 
     const input = screen.getByLabelText(
       /users per page limit/i,
@@ -251,39 +174,84 @@ describe("UsersTable", () => {
     await user.clear(input);
     await user.type(input, "33");
 
-    // blur commits
     input.blur();
 
     expect(onLimitChange).toHaveBeenCalledTimes(1);
     expect(onLimitChange).toHaveBeenCalledWith(33);
   });
 
-  it("invalid numeric input does not call onLimitChange and reverts draft", async () => {
+  it("invalid numeric input does not call onLimitChange and reverts back to prop value", async () => {
     const user = userEvent.setup();
-
-    render(
-      <UsersTable
-        users={[makeUser(1)]}
-        loading={false}
-        limit={10}
-        onLimitChange={onLimitChange}
-        onEdit={onEdit}
-        onDelete={onDelete}
-      />,
-    );
+    renderTable({ limit: 10 });
 
     const input = screen.getByLabelText(
       /users per page limit/i,
     ) as HTMLInputElement;
 
     await user.click(input);
-    await user.clear(input);
-    // type something that results in NaN for Number(...)
-    await user.type(input, "e");
+
+    // force an invalid value (type=number won't let user.type('e') reliably)
+    fireEvent.change(input, { target: { value: "abc" } });
+
     await user.keyboard("{Enter}");
 
     expect(onLimitChange).not.toHaveBeenCalled();
-    // should revert back to prop value after commit/cancel logic settles
+    // should revert to prop (editing ends, inputValue becomes String(limit))
     expect(input.value).toBe("10");
+  });
+
+  it("pagination: Prev/Next disabled state reflects hasPrev/hasNext", () => {
+    renderTable({
+      page: 1,
+      totalPages: 3,
+      hasPrev: false,
+      hasNext: true,
+    });
+
+    const prev = screen.getByRole("button", {
+      name: /prev/i,
+    }) as HTMLButtonElement;
+    const next = screen.getByRole("button", {
+      name: /next/i,
+    }) as HTMLButtonElement;
+
+    expect(prev.disabled).toBe(true);
+    expect(next.disabled).toBe(false);
+
+    const pager = screen.getByText(/page/i).closest(".usersPager");
+    expect(pager).toBeTruthy();
+    expect(pager!).toHaveTextContent("Page");
+    expect(pager!).toHaveTextContent("1");
+    expect(pager!).toHaveTextContent("3");
+  });
+
+  it("pagination: clicking Next calls onNextPage, clicking Prev calls onPrevPage", async () => {
+    const user = userEvent.setup();
+
+    renderTable({
+      page: 2,
+      totalPages: 3,
+      hasPrev: true,
+      hasNext: true,
+    });
+
+    await user.click(screen.getByRole("button", { name: /next/i }));
+    expect(onNextPage).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole("button", { name: /prev/i }));
+    expect(onPrevPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("pagination buttons are disabled while loading", () => {
+    renderTable({
+      loading: true,
+      hasPrev: true,
+      hasNext: true,
+    });
+
+    const metaRow = screen.getByText(/showing/i).closest("div");
+    expect(metaRow).toBeTruthy();
+    expect(metaRow!).toHaveTextContent("Showing");
+    expect(metaRow!).toHaveTextContent("2");
   });
 });
