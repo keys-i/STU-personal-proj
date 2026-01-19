@@ -21,10 +21,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 25
           cache: npm
@@ -40,7 +40,7 @@ jobs:
 
       - name: Cache Prisma engines
         if: matrix.app == 'backend'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/prisma
           key: ${{ runner.os }}-prisma-${{ hashFiles('backend/package-lock.json', 'backend/prisma/schema.prisma') }}
@@ -53,7 +53,7 @@ jobs:
 
       - name: Cache ESLint
         if: matrix.app == 'backend'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: backend/.eslintcache
           key: ${{ runner.os }}-eslint-${{ hashFiles('backend/package-lock.json', 'backend/eslint.config.ts') }}
@@ -62,7 +62,7 @@ jobs:
 
       - name: Cache TypeScript
         if: matrix.app == 'backend'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: backend/.tsbuildinfo
           key: ${{ runner.os }}-tsc-${{ hashFiles('backend/package-lock.json', 'backend/tsconfig.json') }}
